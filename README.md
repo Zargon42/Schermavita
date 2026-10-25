@@ -83,6 +83,6 @@ Two retained tests use a separately supplied private history fixture. They skip 
 
 This is a personal project and a reviewed source snapshot, version **0.6.2**. Earlier development history is retained privately to protect private test inputs. Screenshots are demonstrations, not evidence of live Health Connect synchronization.
 
-Fencer ratings and correlations are descriptive estimates from recorded data, not official rankings or causal findings. Missing observations are not filled. Physical-device Health Connect behavior, OEM background scheduling, handwriting accuracy and real entry speed still need hands-on verification.
+Fencer ratings and correlations are descriptive estimates from recorded data, not official rankings or causal findings. Missing observations are not filled.
 
 No application license has been selected for this unpublished candidate. Existing third-party notices are retained. Publication and licensing remain separate decisions; nothing in this export has been published automatically.
