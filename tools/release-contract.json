@@ -1,0 +1,569 @@
+{
+  "minimumVersionCode": 8,
+  "package": "dev.riposte.personal",
+  "certificateSha256": "e0a36491d96e832000c6dacd06a715ac1bd6780ebfdd4dad5b059f456aec5bb5",
+  "required": {
+    "core/src/main/kotlin/dev/riposte/core/ScreenTime.kt": [
+      "object ScreenTime",
+      "fun measure"
+    ],
+    "core/src/main/kotlin/dev/riposte/core/Models.kt": [
+      "screenTimeEnabled",
+      "sessionTrackers",
+      "equipmentCategories"
+    ],
+    "app/src/main/AndroidManifest.xml": [
+      "android.permission.PACKAGE_USAGE_STATS",
+      "android:label=\"@string/app_name\""
+    ],
+    "app/src/main/kotlin/dev/riposte/app/ScreenTimeSync.kt": [
+      "suspend fun syncScreenTime",
+      "class ScreenTimeWorker"
+    ],
+    "app/src/main/kotlin/dev/riposte/app/TrackerApp.kt": [
+      "PeriodicWorkRequestBuilder<ScreenTimeWorker>"
+    ],
+    "app/src/main/kotlin/dev/riposte/app/MainActivity.kt": [
+      "syncScreenTime(repo)",
+      "val appName=stringResource(R.string.app_name)"
+    ],
+    "app/src/main/kotlin/dev/riposte/app/SettingsScreen.kt": [
+      "Panel(\"Screen time\")",
+      "ACTION_USAGE_ACCESS_SETTINGS",
+      "BuildConfig.VERSION_NAME"
+    ],
+    "app/src/main/kotlin/dev/riposte/app/LifeScreens.kt": [
+      "screen_time"
+    ],
+    "app/src/main/kotlin/dev/riposte/app/FencingScreens.kt": [
+      "Heading(\"Lessons\")",
+      "Add lesson",
+      "Preparation",
+      "lenses",
+      "Latest score ratings",
+      "Sort fencers:",
+      "rememberFencerStrength",
+      "Show more fencers",
+      "Close session",
+      "repo.closeSession(active.id)"
+    ],
+    "core/src/main/kotlin/dev/riposte/core/TrackerDefinitions.kt": [
+      "data class TrackerRevision"
+    ],
+    "app/src/main/kotlin/dev/riposte/app/ConfigurationEditors.kt": [
+      "fun "
+    ],
+    "fencing/src/main/kotlin/dev/riposte/fencing/Fencing.kt": [
+      "data class Lesson"
+    ],
+    "app/src/main/kotlin/dev/riposte/app/Storage.kt": [
+      "val lessons: List<Lesson>",
+      "record(\"lesson\"",
+      "suspend fun closeSession"
+    ],
+    "app/src/main/kotlin/dev/riposte/app/BackupScreen.kt": [
+      "fun lessonsCsv",
+      "\"lessons\"->lessonsCsv(s)"
+    ],
+    "app/src/main/kotlin/dev/riposte/app/InsightsScreen.kt": [
+      "PerformancePicker",
+      "ObservationChart",
+      "Compare with life",
+      "Opponent baselines",
+      "ScreenTimeChartHint",
+      "chartableMetrics",
+      "screenTimeChartNote"
+    ],
+    "app/src/main/kotlin/dev/riposte/app/ImportScreen.kt": [
+      "Choose photo",
+      "PickVisualMedia",
+      "readImportSource"
+    ],
+    "app/src/main/kotlin/dev/riposte/app/ImportSource.kt": [
+      "suspend fun readImportSource",
+      "readBounded(100_000_001)"
+    ],
+    "insights/src/main/kotlin/dev/riposte/insights/FencingAnalysis.kt": [
+      "fun opponentStrength",
+      "fun performancePoints",
+      "fun matchPerformance"
+    ],
+    "life/src/main/kotlin/dev/riposte/life/Life.kt": [
+      "fun chartableMetrics"
+    ],
+    "imports/src/main/kotlin/dev/riposte/imports/DocumentReader.kt": [
+      "ImageDecoder.decodeBitmap"
+    ],
+    "insights/src/main/kotlin/dev/riposte/insights/FencerRatings.kt": [
+      "fun rankedFencers",
+      "enum class FencerOrder"
+    ],
+    "app/src/main/res/values/strings.xml": [
+      "<string name=\"app_name\">SchermaVita</string>"
+    ]
+  },
+  "tests": [
+    {
+      "module": "core",
+      "kind": "test",
+      "file": "core/src/test/kotlin/dev/riposte/core/DayClockTest.kt",
+      "class": "dev.riposte.core.DayClockTest",
+      "name": "lateNightAndExactBoundary"
+    },
+    {
+      "module": "core",
+      "kind": "test",
+      "file": "core/src/test/kotlin/dev/riposte/core/DayClockTest.kt",
+      "class": "dev.riposte.core.DayClockTest",
+      "name": "daylightSavingsUsesRealInterval"
+    },
+    {
+      "module": "core",
+      "kind": "test",
+      "file": "core/src/test/kotlin/dev/riposte/core/DayClockTest.kt",
+      "class": "dev.riposte.core.DayClockTest",
+      "name": "changedBoundaryDoesNotRewriteSavedDay"
+    },
+    {
+      "module": "core",
+      "kind": "test",
+      "file": "core/src/test/kotlin/dev/riposte/core/DayClockTest.kt",
+      "class": "dev.riposte.core.DayClockTest",
+      "name": "earlierBoundaryAndTravelKeepIntervals"
+    },
+    {
+      "module": "core",
+      "kind": "test",
+      "file": "core/src/test/kotlin/dev/riposte/core/DayClockTest.kt",
+      "class": "dev.riposte.core.DayClockTest",
+      "name": "cutoffsInsideDstGapAndOverlapUseInstants"
+    },
+    {
+      "module": "core",
+      "kind": "test",
+      "file": "core/src/test/kotlin/dev/riposte/core/DayClockTest.kt",
+      "class": "dev.riposte.core.DayClockTest",
+      "name": "backupAuthenticatesPasswordAndContents"
+    },
+    {
+      "module": "core",
+      "kind": "test",
+      "file": "core/src/test/kotlin/dev/riposte/core/ScreenTimeTest.kt",
+      "class": "dev.riposte.core.ScreenTimeTest",
+      "name": "countsUnlockedInteractiveTimeOnly"
+    },
+    {
+      "module": "core",
+      "kind": "test",
+      "file": "core/src/test/kotlin/dev/riposte/core/ScreenTimeTest.kt",
+      "class": "dev.riposte.core.ScreenTimeTest",
+      "name": "warmupStateClipsAcrossBoundaryAndDuplicateEvents"
+    },
+    {
+      "module": "core",
+      "kind": "test",
+      "file": "core/src/test/kotlin/dev/riposte/core/ScreenTimeTest.kt",
+      "class": "dev.riposte.core.ScreenTimeTest",
+      "name": "missingAndRebootIntervalsStayUnknown"
+    },
+    {
+      "module": "core",
+      "kind": "test",
+      "file": "core/src/test/kotlin/dev/riposte/core/ScreenTimeTest.kt",
+      "class": "dev.riposte.core.ScreenTimeTest",
+      "name": "knownOffDayReallyIsZero"
+    },
+    {
+      "module": "core",
+      "kind": "test",
+      "file": "core/src/test/kotlin/dev/riposte/core/ScreenTimeTest.kt",
+      "class": "dev.riposte.core.ScreenTimeTest",
+      "name": "realDstIntervalAndEarlyMorningAssignment"
+    },
+    {
+      "module": "core",
+      "kind": "test",
+      "file": "core/src/test/kotlin/dev/riposte/core/ScreenTimeTest.kt",
+      "class": "dev.riposte.core.ScreenTimeTest",
+      "name": "oldSettingsDecodeWithoutChangingExistingPreferences"
+    },
+    {
+      "module": "life",
+      "kind": "test",
+      "file": "life/src/test/kotlin/dev/riposte/life/LifeTest.kt",
+      "class": "dev.riposte.life.LifeTest",
+      "name": "reviewTakesPrecedenceWithoutDeletingMoments"
+    },
+    {
+      "module": "life",
+      "kind": "test",
+      "file": "life/src/test/kotlin/dev/riposte/life/LifeTest.kt",
+      "class": "dev.riposte.life.LifeTest",
+      "name": "datesAndBasesAreNotSilentlyMixed"
+    },
+    {
+      "module": "life",
+      "kind": "test",
+      "file": "life/src/test/kotlin/dev/riposte/life/LifeTest.kt",
+      "class": "dev.riposte.life.LifeTest",
+      "name": "missingIsNotZero"
+    },
+    {
+      "module": "life",
+      "kind": "test",
+      "file": "life/src/test/kotlin/dev/riposte/life/TrackerRevisionTest.kt",
+      "class": "dev.riposte.life.TrackerRevisionTest",
+      "name": "reducingAndExpandingScalesPreservesHistory"
+    },
+    {
+      "module": "life",
+      "kind": "test",
+      "file": "life/src/test/kotlin/dev/riposte/life/TrackerRevisionTest.kt",
+      "class": "dev.riposte.life.TrackerRevisionTest",
+      "name": "changedLabelsAndUnitsCreateRevisionsButNoOpDoesNot"
+    },
+    {
+      "module": "life",
+      "kind": "test",
+      "file": "life/src/test/kotlin/dev/riposte/life/TrackerRevisionTest.kt",
+      "class": "dev.riposte.life.TrackerRevisionTest",
+      "name": "rejectsInvalidLevelsAndChangingType"
+    },
+    {
+      "module": "fencing",
+      "kind": "test",
+      "file": "fencing/src/test/kotlin/dev/riposte/fencing/FencingTest.kt",
+      "class": "dev.riposte.fencing.FencingTest",
+      "name": "othersNeverCountAsMyPerformance"
+    },
+    {
+      "module": "fencing",
+      "kind": "test",
+      "file": "fencing/src/test/kotlin/dev/riposte/fencing/FencingTest.kt",
+      "class": "dev.riposte.fencing.FencingTest",
+      "name": "unknownAndPriorityOutcomes"
+    },
+    {
+      "module": "fencing",
+      "kind": "test",
+      "file": "fencing/src/test/kotlin/dev/riposte/fencing/FencingTest.kt",
+      "class": "dev.riposte.fencing.FencingTest",
+      "name": "equipmentIsSnapshotAndRematchesRemainSeparate"
+    },
+    {
+      "module": "fencing",
+      "kind": "test",
+      "file": "fencing/src/test/kotlin/dev/riposte/fencing/FencingTest.kt",
+      "class": "dev.riposte.fencing.FencingTest",
+      "name": "disallowSelfMatchAndBadScores"
+    },
+    {
+      "module": "fencing",
+      "kind": "test",
+      "file": "fencing/src/test/kotlin/dev/riposte/fencing/FencingTest.kt",
+      "class": "dev.riposte.fencing.FencingTest",
+      "name": "reportsSelectedFencerPointAndWinLossRatiosAndRatings"
+    },
+    {
+      "module": "fencing",
+      "kind": "test",
+      "file": "fencing/src/test/kotlin/dev/riposte/fencing/SessionPreparationTest.kt",
+      "class": "dev.riposte.fencing.SessionPreparationTest",
+      "name": "independentSessionsAndEquipmentSnapshots"
+    },
+    {
+      "module": "fencing",
+      "kind": "test",
+      "file": "fencing/src/test/kotlin/dev/riposte/fencing/SessionPreparationTest.kt",
+      "class": "dev.riposte.fencing.SessionPreparationTest",
+      "name": "optionalFieldsRoundTripAndOlderSessionsLoad"
+    },
+    {
+      "module": "insights",
+      "kind": "test",
+      "file": "insights/src/test/kotlin/dev/riposte/insights/ComparisonTest.kt",
+      "class": "dev.riposte.insights.ComparisonTest",
+      "name": "precedingMeansCalendarDayNotPreviousObservedRow"
+    },
+    {
+      "module": "insights",
+      "kind": "test",
+      "file": "insights/src/test/kotlin/dev/riposte/insights/ComparisonTest.kt",
+      "class": "dev.riposte.insights.ComparisonTest",
+      "name": "differentBasesNeverPair"
+    },
+    {
+      "module": "insights",
+      "kind": "test",
+      "file": "insights/src/test/kotlin/dev/riposte/insights/ComparisonTest.kt",
+      "class": "dev.riposte.insights.ComparisonTest",
+      "name": "computesRegressionLineFromObservedPoints"
+    },
+    {
+      "module": "insights",
+      "kind": "test",
+      "file": "insights/src/test/kotlin/dev/riposte/insights/ComparisonTest.kt",
+      "class": "dev.riposte.insights.ComparisonTest",
+      "name": "regressionNeedsTwoDistinctDates"
+    },
+    {
+      "module": "imports",
+      "kind": "test",
+      "file": "imports/src/test/kotlin/dev/riposte/imports/ImportTest.kt",
+      "class": "dev.riposte.imports.ImportTest",
+      "name": "quotedNewlinesAndEscapes"
+    },
+    {
+      "module": "imports",
+      "kind": "test",
+      "file": "imports/src/test/kotlin/dev/riposte/imports/ImportTest.kt",
+      "class": "dev.riposte.imports.ImportTest",
+      "name": "pouleMirrorsProduceOneBout"
+    },
+    {
+      "module": "imports",
+      "kind": "test",
+      "file": "imports/src/test/kotlin/dev/riposte/imports/ImportTest.kt",
+      "class": "dev.riposte.imports.ImportTest",
+      "name": "blankIsNotZeroAndConflictsFlagged"
+    },
+    {
+      "module": "app",
+      "kind": "test",
+      "file": "app/src/test/kotlin/dev/riposte/app/ArchiveTest.kt",
+      "class": "dev.riposte.app.ArchiveTest",
+      "name": "restoredRecordsAndRepeatImportAreStable"
+    },
+    {
+      "module": "app",
+      "kind": "test",
+      "file": "app/src/test/kotlin/dev/riposte/app/ArchiveTest.kt",
+      "class": "dev.riposte.app.ArchiveTest",
+      "name": "rejectsMissingAttachmentsAndTraversal"
+    },
+    {
+      "module": "app",
+      "kind": "test",
+      "file": "app/src/test/kotlin/dev/riposte/app/ArchiveTest.kt",
+      "class": "dev.riposte.app.ArchiveTest",
+      "name": "fullPrivateHistoryReconciles"
+    },
+    {
+      "module": "app",
+      "kind": "test",
+      "file": "app/src/test/kotlin/dev/riposte/app/SessionArchiveTest.kt",
+      "class": "dev.riposte.app.SessionArchiveTest",
+      "name": "screenTimeAndSessionSettingsSurviveBackupTogether"
+    },
+    {
+      "module": "app",
+      "kind": "test",
+      "file": "app/src/test/kotlin/dev/riposte/app/SessionArchiveTest.kt",
+      "class": "dev.riposte.app.SessionArchiveTest",
+      "name": "oldBackupPreservesDailyWillingnessAndUnknownSessionValues"
+    },
+    {
+      "module": "app",
+      "kind": "test",
+      "file": "app/src/test/kotlin/dev/riposte/app/SessionArchiveTest.kt",
+      "class": "dev.riposte.app.SessionArchiveTest",
+      "name": "definitionsCategoriesAndAnswersSurviveBackupAndCsv"
+    },
+    {
+      "module": "app",
+      "kind": "test",
+      "file": "app/src/test/kotlin/dev/riposte/app/SessionArchiveTest.kt",
+      "class": "dev.riposte.app.SessionArchiveTest",
+      "name": "exportsParticipantOverridesAndUnknownSeparately"
+    },
+    {
+      "module": "app",
+      "kind": "test",
+      "file": "app/src/test/kotlin/dev/riposte/app/SessionArchiveTest.kt",
+      "class": "dev.riposte.app.SessionArchiveTest",
+      "name": "lessonEntriesStayLinkedThroughBackupAndCsvExport"
+    },
+    {
+      "module": "app",
+      "kind": "test",
+      "file": "app/src/test/kotlin/dev/riposte/app/SessionArchiveTest.kt",
+      "class": "dev.riposte.app.SessionArchiveTest",
+      "name": "futureBackupIsRejected"
+    },
+    {
+      "module": "app",
+      "kind": "androidTest",
+      "file": "app/src/androidTest/kotlin/dev/riposte/app/HistoryDeviceTest.kt",
+      "class": "dev.riposte.app.HistoryDeviceTest",
+      "name": "completeHistoryImportReloadAndRepeat"
+    },
+    {
+      "module": "app",
+      "kind": "androidTest",
+      "file": "app/src/androidTest/kotlin/dev/riposte/app/ScreenTimeDeviceTest.kt",
+      "class": "dev.riposte.app.ScreenTimeDeviceTest",
+      "name": "permissionSyncAndRevocationPreserveExistingRecords"
+    },
+    {
+      "module": "app",
+      "kind": "androidTest",
+      "file": "app/src/androidTest/kotlin/dev/riposte/app/TrackerDeviceTest.kt",
+      "class": "dev.riposte.app.TrackerDeviceTest",
+      "name": "fastSessionAndBoutFlow"
+    },
+    {
+      "module": "app",
+      "kind": "androidTest",
+      "file": "app/src/androidTest/kotlin/dev/riposte/app/TrackerDeviceTest.kt",
+      "class": "dev.riposte.app.TrackerDeviceTest",
+      "name": "storageReloadAndThirdPartyIsolation"
+    },
+    {
+      "module": "app",
+      "kind": "androidTest",
+      "file": "app/src/androidTest/kotlin/dev/riposte/app/TrackerDeviceTest.kt",
+      "class": "dev.riposte.app.TrackerDeviceTest",
+      "name": "quickMoodIsSavedAsMomentary"
+    },
+    {
+      "module": "app",
+      "kind": "androidTest",
+      "file": "app/src/androidTest/kotlin/dev/riposte/app/TrackerDeviceTest.kt",
+      "class": "dev.riposte.app.TrackerDeviceTest",
+      "name": "backupRejectsTraversalAndImportRepeatsDoNotDuplicate"
+    },
+    {
+      "module": "app",
+      "kind": "androidTest",
+      "file": "app/src/androidTest/kotlin/dev/riposte/app/TrackerDeviceTest.kt",
+      "class": "dev.riposte.app.TrackerDeviceTest",
+      "name": "preparationAndCustomEquipmentSurviveSessionAndBoutEntry"
+    },
+    {
+      "module": "app",
+      "kind": "androidTest",
+      "file": "app/src/androidTest/kotlin/dev/riposte/app/TrackerDeviceTest.kt",
+      "class": "dev.riposte.app.TrackerDeviceTest",
+      "name": "trackerEditPreservesHistoricalEntryAndReviewScale"
+    },
+    {
+      "module": "insights",
+      "kind": "test",
+      "file": "insights/src/test/kotlin/dev/riposte/insights/FencingAnalysisTest.kt",
+      "class": "dev.riposte.insights.FencingAnalysisTest",
+      "name": "scoreMarginsAndOrientationDriveSymmetricRatings"
+    },
+    {
+      "module": "insights",
+      "kind": "test",
+      "file": "insights/src/test/kotlin/dev/riposte/insights/FencingAnalysisTest.kt",
+      "class": "dev.riposte.insights.FencingAnalysisTest",
+      "name": "priorDaysOnlyAndSameDayOrderIndependent"
+    },
+    {
+      "module": "insights",
+      "kind": "test",
+      "file": "insights/src/test/kotlin/dev/riposte/insights/FencingAnalysisTest.kt",
+      "class": "dev.riposte.insights.FencingAnalysisTest",
+      "name": "provisionalThresholdAndWeightedAdjustedPerformance"
+    },
+    {
+      "module": "insights",
+      "kind": "test",
+      "file": "insights/src/test/kotlin/dev/riposte/insights/FencingAnalysisTest.kt",
+      "class": "dev.riposte.insights.FencingAnalysisTest",
+      "name": "weaponAndOptionalFiltersRetainThirdPartyEvidence"
+    },
+    {
+      "module": "insights",
+      "kind": "test",
+      "file": "insights/src/test/kotlin/dev/riposte/insights/FencingAnalysisTest.kt",
+      "class": "dev.riposte.insights.FencingAnalysisTest",
+      "name": "invalidDeletedUnknownAndLinkedResultsDoNotInflateEvidence"
+    },
+    {
+      "module": "insights",
+      "kind": "test",
+      "file": "insights/src/test/kotlin/dev/riposte/insights/FencingAnalysisTest.kt",
+      "class": "dev.riposte.insights.FencingAnalysisTest",
+      "name": "dailySeriesRespectScoresOutcomesScalesAndDateBases"
+    },
+    {
+      "module": "insights",
+      "kind": "test",
+      "file": "insights/src/test/kotlin/dev/riposte/insights/FencingAnalysisTest.kt",
+      "class": "dev.riposte.insights.FencingAnalysisTest",
+      "name": "matchingUsesExactPriorDateAndSeparatesBasesAndRevisions"
+    },
+    {
+      "module": "life",
+      "kind": "test",
+      "file": "life/src/test/kotlin/dev/riposte/life/ScreenTimeChartTest.kt",
+      "class": "dev.riposte.life.ScreenTimeChartTest",
+      "name": "screenTimeDiscoverableWithoutSyncOrManualVisibility"
+    },
+    {
+      "module": "life",
+      "kind": "test",
+      "file": "life/src/test/kotlin/dev/riposte/life/ScreenTimeChartTest.kt",
+      "class": "dev.riposte.life.ScreenTimeChartTest",
+      "name": "storedMinutesExcludePartialAndKeepZeroAndLatestAggregate"
+    },
+    {
+      "module": "app",
+      "kind": "test",
+      "file": "app/src/test/kotlin/dev/riposte/app/InsightsPresentationTest.kt",
+      "class": "dev.riposte.app.InsightsPresentationTest",
+      "name": "currentScreenTimeShowsMinutesSoFarAndMeasurementTimeWhenSyncOff"
+    },
+    {
+      "module": "app",
+      "kind": "androidTest",
+      "file": "app/src/androidTest/kotlin/dev/riposte/app/InsightsDeviceTest.kt",
+      "class": "dev.riposte.app.InsightsDeviceTest",
+      "name": "performanceChartsMatchScreenTimeAndShowOpponentBaselines"
+    },
+    {
+      "module": "app",
+      "kind": "androidTest",
+      "file": "app/src/androidTest/kotlin/dev/riposte/app/InsightsDeviceTest.kt",
+      "class": "dev.riposte.app.InsightsDeviceTest",
+      "name": "storedPhotoImportReviewsSavesDetectsDuplicatesAndUndoes"
+    },
+    {
+      "module": "app",
+      "kind": "androidTest",
+      "file": "app/src/androidTest/kotlin/dev/riposte/app/InsightsDeviceTest.kt",
+      "class": "dev.riposte.app.InsightsDeviceTest",
+      "name": "storedImagesApplyExifOrientationAndRejectUnreadableSources"
+    },
+    {
+      "module": "insights",
+      "kind": "test",
+      "file": "insights/src/test/kotlin/dev/riposte/insights/FencerRatingsTest.kt",
+      "class": "dev.riposte.insights.FencerRatingsTest",
+      "name": "ratingOrdersKeepMissingLastAndTiesStableAcrossWeapons"
+    },
+    {
+      "module": "insights",
+      "kind": "test",
+      "file": "insights/src/test/kotlin/dev/riposte/insights/FencerRatingsTest.kt",
+      "class": "dev.riposte.insights.FencerRatingsTest",
+      "name": "latestEvidenceRecalculatesAndCountsExcludeDeletedBouts"
+    },
+    {
+      "module": "app",
+      "kind": "androidTest",
+      "file": "app/src/androidTest/kotlin/dev/riposte/app/FencerRatingsDeviceTest.kt",
+      "class": "dev.riposte.app.FencerRatingsDeviceTest",
+      "name": "latestRatingsSortByWeaponAndOpenProfile"
+    },
+    {
+      "module": "app",
+      "kind": "androidTest",
+      "file": "app/src/androidTest/kotlin/dev/riposte/app/TrackerDeviceTest.kt",
+      "class": "dev.riposte.app.TrackerDeviceTest",
+      "name": "closeSessionPreservesHistoryPersistsAndCanResume"
+    }
+  ]
+}
