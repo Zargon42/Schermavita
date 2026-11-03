@@ -7,6 +7,11 @@ import org.junit.Test
 import java.time.*
 
 class InsightsPresentationTest {
+    @Test fun dateBasisLabelsDistinguishHistoricalAndTrackingSources() {
+        assertEquals("Historical calendar dates",observationSourceLabel("calendar"))
+        assertEquals("Tracking-day dates",observationSourceLabel("tracking"))
+    }
+
     @Test fun currentScreenTimeShowsMinutesSoFarAndMeasurementTimeWhenSyncOff() {
         val now=Instant.parse("2026-10-03T12:00:00Z")
         val day=DayClock.day(now,ZoneId.systemDefault(),Settings().boundaryRules).label

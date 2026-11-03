@@ -14,8 +14,10 @@ data class BaselineComparison(val boutId: String, val day: String, val weapon: S
     fun expected(person: String) = if(person == a) expectedA else 1.0-expectedA
     fun actual(person: String) = if(person == a) actualA else 1.0-actualA
 }
+data class RatingSnapshot(val day: String, val evidence: RatingEvidence)
 data class StrengthAnalysis(val comparisons: Map<String,BaselineComparison> = emptyMap(),
-    val ratings: Map<Pair<String,String>,RatingEvidence> = emptyMap())
+    val ratings: Map<Pair<String,String>,RatingEvidence> = emptyMap(),
+    val ratingHistory: Map<Pair<String,String>,List<RatingSnapshot>> = emptyMap())
 
 fun validDay(day: String): Boolean = runCatching { LocalDate.parse(day) }.isSuccess
 fun analysisBouts(bouts: List<Bout>, sessions: List<Session>, filter: AnalysisFilter): List<Bout> {
@@ -39,6 +41,7 @@ fun opponentStrength(bouts: List<Bout>, sessions: List<Session>, fencers: List<F
     }.distinctBy {it.id}
     val ratings=mutableMapOf<Pair<String,String>,RatingEvidence>()
     val comparisons=mutableMapOf<String,BaselineComparison>()
+    val ratingHistory=mutableMapOf<Pair<String,String>,MutableList<RatingSnapshot>>()
     eligible.groupBy {it.stamp.day}.toSortedMap().forEach { (day,rows) ->
         val updates=mutableMapOf<Pair<String,String>,MutableList<Double>>()
         rows.sortedBy {it.id}.forEach {b ->
@@ -54,10 +57,12 @@ fun opponentStrength(bouts: List<Bout>, sessions: List<Session>, fencers: List<F
         }
         updates.forEach { (key,deltas) ->
             val old=ratings[key] ?: RatingEvidence()
-            ratings[key]=RatingEvidence(old.rating+deltas.average(),old.bouts+deltas.size)
+            val updated=RatingEvidence(old.rating+deltas.average(),old.bouts+deltas.size)
+            ratings[key]=updated
+            ratingHistory.getOrPut(key) {mutableListOf()}.add(RatingSnapshot(day,updated))
         }
     }
-    return StrengthAnalysis(comparisons,ratings)
+    return StrengthAnalysis(comparisons,ratings,ratingHistory)
 }
 
 enum class PerformanceMeasure(val label: String, val unit: String) {

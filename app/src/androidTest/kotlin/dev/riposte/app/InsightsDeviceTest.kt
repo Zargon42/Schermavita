@@ -40,17 +40,22 @@ class InsightsDeviceTest {
         runBlocking {repo.change {Snapshot()};repo.ensureDay();repo.selectTab(0)}
         compose.waitForIdle()
     }
-    @Test fun performanceChartsMatchScreenTimeAndShowOpponentBaselines() {
+    @Test fun performanceChartsUnifyDateSourcesAndHideOpponentBaselines() {
         val session=Session("session","Club",Stamp(day="2026-10-01"))
-        val bouts=(1..7).map {i->Bout("b$i",session.id,"me","alice",5,3,target=5,stamp=Stamp(day="2026-10-0$i"),detailsA=ParticipantDetails(rating=4.0))}
+        val bouts=(1..7).map {i->Bout("b$i",session.id,"me","alice",5,3,target=5,stamp=Stamp(day="2026-10-0$i"),
+            detailsA=ParticipantDetails(rating=4.0,sword=if(i<4) "Standard" else "Light"),
+            origin=if(i==7) Origin(source="historical",dateBasis="calendar") else Origin())}
         val metric=chartableMetrics(emptyList()).single()
-        val observations=(1..7).map {i->Observation("screen$i",metric.id,Stamp(day="2026-10-0$i"),i*10.0,scope="aggregate",unit="min",scale=metric.scale)}
+        val observations=(1..7).map {i->Observation("screen$i",metric.id,Stamp(day="2026-10-0$i"),i*10.0,scope="aggregate",unit="min",scale=metric.scale,
+            origin=if(i==7) Origin(source="historical",dateBasis="calendar") else Origin())}
         runBlocking {repo.change {it.copy(fencers=it.fencers+Fencer("alice","Alice"),sessions=listOf(session),bouts=bouts,metrics=it.metrics+metric,observations=observations)}}
         compose.onNodeWithText("Insights",useUnmergedTree=true).performClick()
         fun select(label: String,current: String) {
             compose.onNodeWithText("Performance: $current").performScrollTo().performClick()
             compose.onNode(hasText(label,substring=false) and hasClickAction()).performClick()
         }
+        compose.onNodeWithText("● Touch share · Tracking-day dates").assertExists()
+        compose.onNodeWithText("● Touch share · Historical calendar dates").assertExists()
         select("Points for / against","Touch share")
         compose.onNodeWithText("● Points against").assertExists()
         select("Wins / losses","Points for / against")
@@ -66,8 +71,10 @@ class InsightsDeviceTest {
         compose.onNodeWithText("2 paired days",substring=true).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Life metric on the previous day").performScrollTo()
         compose.onAllNodes(isToggleable()).filter(hasAnySibling(hasText("Life metric on the previous day"))).onFirst().performClick()
-        compose.onNodeWithText("Opponent baselines").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Actual",substring=true).performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Fencing performance vs life metric").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Opponent baselines").assertDoesNotExist()
+        compose.onNodeWithText("Equipment cards").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Performance by equipment setup").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Life",substring=false).performScrollTo().performClick()
         compose.onNodeWithText("Trend: Screen time").assertExists()
         compose.onNodeWithText("7 observed days",substring=true).performScrollTo().assertIsDisplayed()

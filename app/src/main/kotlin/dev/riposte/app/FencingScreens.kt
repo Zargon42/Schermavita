@@ -1,11 +1,15 @@
 @file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 package dev.riposte.app
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.riposte.core.*
 import dev.riposte.fencing.*
@@ -69,10 +73,19 @@ import java.time.*
         Hint("Latest score ratings estimate strength from all recorded results in each weapon. Provisional until 5 eligible bouts; unrated fencers sort last by rating.")
         val people=rankedFencers(s.fencers,s.bouts,strength ?: StrengthAnalysis(),ratingWeapon,order,search)
         people.take(shown).forEach { row-> val f=row.fencer
-            ListItem(headlineContent={Text(f.name)},supportingContent={Column {
-                Text("${f.club.ifBlank { "Fencer profile" }} · ${row.bouts} bouts")
-                Text(ratingLabel(ratingWeapon,row.evidence,strength==null))
-            }},modifier=Modifier.clickable { onPerson(f.id) })
+            val history=strength?.ratingHistory?.get(ratingWeapon to f.id).orEmpty()
+            Card(Modifier.fillMaxWidth().clickable {onPerson(f.id)}) {
+                Column {
+                    ListItem(headlineContent={Text(f.name)},supportingContent={Column {
+                        Text("${f.club.ifBlank { "Fencer profile" }} · ${row.bouts} bouts")
+                        Text(ratingLabel(ratingWeapon,row.evidence,strength==null))
+                    }})
+                    if(history.isNotEmpty()) {
+                        Hint("Rating history · ${history.first().day} to ${history.last().day}")
+                        if(history.size>1) RatingSparkline(history)
+                    }
+                }
+            }
         }
         if(people.isEmpty()) Hint("No matching fencers.")
         if(people.size>shown) TextButton(onClick={shown+=20}) {Text("Show more fencers (${people.size-shown} remaining)")}
@@ -97,6 +110,25 @@ private fun ratingLabel(weapon: String,evidence: RatingEvidence?,loading: Boolea
         evidence==null -> "Not rated"
         else -> "${decimal(evidence.rating)} · ${evidence.bouts} eligible "+(if(evidence.bouts==1) "bout" else "bouts")+if(evidence.bouts<5) " · Provisional" else ""
     }
+@Composable private fun RatingSparkline(history: List<RatingSnapshot>) {
+    val values=history.map {it.evidence.rating}
+    val low=values.minOrNull() ?: return
+    val high=values.maxOrNull() ?: return
+    val color=MaterialTheme.colorScheme.primary
+    val description=history.joinToString("; ") {"${it.day}: ${decimal(it.evidence.rating)}"}
+    Canvas(Modifier.fillMaxWidth().height(42.dp).semantics {contentDescription="Score rating history: $description"}) {
+        val padding=6f
+        val range=(high-low).takeIf {it>0} ?: 1.0
+        val points=values.mapIndexed {index,value->
+            Offset(
+                padding+(size.width-2*padding)*index/(values.lastIndex.coerceAtLeast(1)),
+                size.height-padding-((value-low)/range).toFloat()*(size.height-2*padding)
+            )
+        }
+        points.zipWithNext().forEach {(start,end)->drawLine(color,start,end,strokeWidth=3f)}
+        points.forEach {drawCircle(color,4f,it)}
+    }
+}
 @Composable fun PersonInput(label: String,s: Snapshot,name: String,onName: (String)->Unit,selected: String?,onSelect: (Fencer)->Unit,exclude: String?=null) {
     Input(label,name,onName)
     if(selected==null || name.isBlank()) {
@@ -242,7 +274,14 @@ private fun ratingLabel(weapon: String,evidence: RatingEvidence?,loading: Boolea
         Heading(p.name); Hint(listOf(p.club,p.handedness).filter { it.isNotBlank() }.joinToString(" · ")); if(p.notes.isNotBlank()) Text(p.notes)
         TextButton(onClick={edit=true}) {Text("Edit profile & aliases")}
         Panel("Latest score ratings") {
-            listOf("Foil","Épée","Sabre").forEach {Text(ratingLabel(it,strength?.ratings?.get(it to id),strength==null))}
+            listOf("Foil","Épée","Sabre").forEach {weaponName->
+                Text(ratingLabel(weaponName,strength?.ratings?.get(weaponName to id),strength==null))
+                val history=strength?.ratingHistory?.get(weaponName to id).orEmpty()
+                if(history.isNotEmpty()) {
+                    Hint("Rating history · ${history.first().day} to ${history.last().day}")
+                    if(history.size>1) RatingSparkline(history)
+                }
+            }
             Hint("Estimates from all recorded results, separate for each weapon. Provisional until 5 eligible bouts. These ratings use the full history, independently of the filters below.")
         }
         Chips(listOf("All","Foil","Épée","Sabre"),weapon,{weapon=it}); Chips(listOf("All","Training","Competition"),context,{context=it}); Chips(listOf("All","5","10","15"),target,{target=it})

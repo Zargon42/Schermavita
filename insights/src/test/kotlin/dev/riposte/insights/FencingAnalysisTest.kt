@@ -30,6 +30,16 @@ class FencingAnalysisTest {
         assertEquals(.5,before.comparisons.getValue("b2").expectedA,0.0)
         assertEquals(1,model(listOf(first,second,third)).comparisons.getValue("b3").priorA.bouts)
     }
+    @Test fun ratingHistoryTracksDailyWeaponRatings() {
+        val first=bout(1,day=1)
+        val second=bout(2,day=2,forScore=0,against=5)
+        val épée=second.copy(id="e3",sessionId="e",stamp=Stamp(day="2026-10-03"))
+        val result=model(listOf(first,second,épée))
+        val foil=result.ratingHistory.getValue("Foil" to "me")
+        assertEquals(listOf("2026-10-01","2026-10-02"),foil.map {it.day})
+        assertEquals(result.ratings.getValue("Foil" to "me"),foil.last().evidence)
+        assertEquals(listOf("2026-10-03"),result.ratingHistory.getValue("Épée" to "me").map {it.day})
+    }
     @Test fun provisionalThresholdAndWeightedAdjustedPerformance() {
         val rows=(1..7).map {bout(it,day=if(it==7) 6 else it,against=if(it==7) 0 else 3)}
         val result=model(rows)

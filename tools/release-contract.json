@@ -41,6 +41,8 @@
       "Preparation",
       "lenses",
       "Latest score ratings",
+      "ratingHistory",
+      "RatingSparkline",
       "Sort fencers:",
       "rememberFencerStrength",
       "Show more fencers",
@@ -68,8 +70,9 @@
     "app/src/main/kotlin/dev/riposte/app/InsightsScreen.kt": [
       "PerformancePicker",
       "ObservationChart",
-      "Compare with life",
-      "Opponent baselines",
+      "Fencing performance vs life metric",
+      "EquipmentInsights",
+      "observationSourceLabel",
       "ScreenTimeChartHint",
       "chartableMetrics",
       "screenTimeChartNote"
@@ -86,7 +89,8 @@
     "insights/src/main/kotlin/dev/riposte/insights/FencingAnalysis.kt": [
       "fun opponentStrength",
       "fun performancePoints",
-      "fun matchPerformance"
+      "fun matchPerformance",
+      "ratingHistory"
     ],
     "life/src/main/kotlin/dev/riposte/life/Life.kt": [
       "fun chartableMetrics"
@@ -465,6 +469,13 @@
       "kind": "test",
       "file": "insights/src/test/kotlin/dev/riposte/insights/FencingAnalysisTest.kt",
       "class": "dev.riposte.insights.FencingAnalysisTest",
+      "name": "ratingHistoryTracksDailyWeaponRatings"
+    },
+    {
+      "module": "insights",
+      "kind": "test",
+      "file": "insights/src/test/kotlin/dev/riposte/insights/FencingAnalysisTest.kt",
+      "class": "dev.riposte.insights.FencingAnalysisTest",
       "name": "provisionalThresholdAndWeightedAdjustedPerformance"
     },
     {
@@ -514,6 +525,13 @@
       "kind": "test",
       "file": "app/src/test/kotlin/dev/riposte/app/InsightsPresentationTest.kt",
       "class": "dev.riposte.app.InsightsPresentationTest",
+      "name": "dateBasisLabelsDistinguishHistoricalAndTrackingSources"
+    },
+    {
+      "module": "app",
+      "kind": "test",
+      "file": "app/src/test/kotlin/dev/riposte/app/InsightsPresentationTest.kt",
+      "class": "dev.riposte.app.InsightsPresentationTest",
       "name": "currentScreenTimeShowsMinutesSoFarAndMeasurementTimeWhenSyncOff"
     },
     {
@@ -521,7 +539,7 @@
       "kind": "androidTest",
       "file": "app/src/androidTest/kotlin/dev/riposte/app/InsightsDeviceTest.kt",
       "class": "dev.riposte.app.InsightsDeviceTest",
-      "name": "performanceChartsMatchScreenTimeAndShowOpponentBaselines"
+      "name": "performanceChartsUnifyDateSourcesAndHideOpponentBaselines"
     },
     {
       "module": "app",
