@@ -57,9 +57,9 @@ class InsightsDeviceTest {
         compose.onNodeWithText("● Touch share · Tracking-day dates").assertExists()
         compose.onNodeWithText("● Touch share · Historical calendar dates").assertExists()
         select("Points for / against","Touch share")
-        compose.onNodeWithText("● Points against").assertExists()
+        compose.onNodeWithText("● Points against · Tracking-day dates").assertExists()
         select("Wins / losses","Points for / against")
-        compose.onNodeWithText("● Losses").assertExists()
+        compose.onNodeWithText("● Losses · Tracking-day dates").assertExists()
         select("Win rate","Wins / losses")
         select("Self-evaluation","Win rate")
         select("Opponent-adjusted touch share","Self-evaluation")
@@ -80,8 +80,8 @@ class InsightsDeviceTest {
         compose.onNodeWithText("7 observed days",substring=true).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Compare with: Stress").performScrollTo().performClick()
         compose.onNode(hasText("Screen time",substring=false) and hasClickAction()).performScrollTo().performClick()
-        // Previous-day mode remains selected: seven consecutive observations make six pairs.
-        compose.onNodeWithText("6 paired days",substring=true).performScrollTo().assertIsDisplayed()
+        // The historical calendar-date reading is not paired with the incompatible tracking-date basis.
+        compose.onNodeWithText("5 paired days",substring=true).performScrollTo().assertIsDisplayed()
         assertFalse(repo.state.value.settings.screenTimeEnabled)
     }
 

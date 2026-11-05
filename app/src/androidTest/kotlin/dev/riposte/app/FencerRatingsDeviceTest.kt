@@ -29,7 +29,7 @@ class FencerRatingsDeviceTest {
         compose.onNodeWithText("Fencing",useUnmergedTree=true).performClick()
         compose.waitUntil(10000) {compose.onAllNodesWithText("Sort fencers: Most bouts").fetchSemanticsNodes().isNotEmpty()}
         compose.waitUntil(10000) {compose.onAllNodesWithText("Foil score rating:",substring=true).fetchSemanticsNodes().isNotEmpty()}
-        compose.onNodeWithText("Rating history · 2026-10-01 to 2026-10-02",substring=true).assertExists()
+        compose.onAllNodesWithText("Rating history · 2026-10-01 to 2026-10-02",substring=true).assertCountEquals(2)
         fun sort(current: String,next: String) {
             compose.onNodeWithText("Sort fencers: $current").performScrollTo().performClick()
             compose.onNode(hasText(next) and hasClickAction()).performClick()

@@ -1,5 +1,5 @@
 {
-  "minimumVersionCode": 8,
+  "minimumVersionCode": 9,
   "package": "dev.riposte.personal",
   "certificateSha256": "e0a36491d96e832000c6dacd06a715ac1bd6780ebfdd4dad5b059f456aec5bb5",
   "required": {
