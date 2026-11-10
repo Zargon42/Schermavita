@@ -9,14 +9,14 @@ import kotlinx.serialization.Serializable
     val context: String = "Training", val venue: String = "", val weapon: String = "Foil", val target: Int = 15,
     val sword: String = "", val glove: String = "", val focus: String = "", val notes: String = "", val origin: Origin = Origin(),
     val preparation: Map<String, TrackerAnswer> = emptyMap(), val lenses: Boolean? = null,
-    val equipment: Map<String,String> = emptyMap())
+    val equipment: Map<String,String> = emptyMap(), val swordId: String = "", val gloveId: String = "", val goals: List<SessionGoal> = emptyList(), val reflection: SessionReflection? = null, val goalsConfigured: Boolean = false)
 @Serializable data class Lesson(val id: String = newId(), val sessionId: String, val coach: String = "",
     val focus: String, val notes: String = "") {
     fun validate() { require(focus.isNotBlank()) { "Enter a lesson focus." } }
 }
 @Serializable data class ParticipantDetails(val sword: String = "", val glove: String = "", val rating: Double? = null,
-    val ratingScale: String = "execution-0-5", val strengths: List<String> = emptyList(), val improve: List<String> = emptyList(), val notes: String = "", val lenses: Boolean? = null, val equipment: Map<String,String> = emptyMap())
-fun Session.participantEquipment() = ParticipantDetails(sword=sword,glove=glove,lenses=lenses,equipment=equipment.toMap())
+    val ratingScale: String = "execution-0-5", val strengths: List<String> = emptyList(), val improve: List<String> = emptyList(), val notes: String = "", val lenses: Boolean? = null, val equipment: Map<String,String> = emptyMap(), val swordId: String = "", val gloveId: String = "", val process: Double? = null, val goalAnswers: List<GoalAnswer> = emptyList())
+fun Session.participantEquipment() = ParticipantDetails(sword=sword,glove=glove,lenses=lenses,equipment=equipment.toMap(),swordId=swordId,gloveId=gloveId)
 @Serializable data class Bout(val id: String = newId(), val sessionId: String, val a: String, val b: String,
     val scoreA: Int?, val scoreB: Int?, val outcome: String = "auto", val status: String = "Finished",
     val target: Int? = 15, val stamp: Stamp, val detailsA: ParticipantDetails = ParticipantDetails(),
@@ -39,7 +39,7 @@ fun Session.participantEquipment() = ParticipantDetails(sword=sword,glove=glove,
         require(scoreB == null || scoreB in 0..999) { "Check the second score." }
         require(outcome in listOf("auto","A","B","Draw","Unknown"))
         if (status == "Finished" && outcome == "auto") require(scoreA != null && scoreB != null) { "Enter both scores or an explicit outcome." }
-        listOf(detailsA,detailsB).forEach { if (it.ratingScale == "execution-0-5") require(it.rating == null || (it.rating in 0.0..5.0 && it.rating * 2 % 1.0 == 0.0)) }
+        listOf(detailsA,detailsB).forEach { require(it.process==null || (it.process in 0.0..5.0 && it.process*2%1.0==0.0)); if (it.ratingScale == "execution-0-5") require(it.rating == null || (it.rating in 0.0..5.0 && it.rating * 2 % 1.0 == 0.0)) }
     }
 }
 data class FencingStats(val bouts: Int, val wins: Int, val losses: Int, val touchesFor: Int, val touchesAgainst: Int, val rated: Int, val execution: Double?) {

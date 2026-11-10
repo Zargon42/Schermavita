@@ -1,5 +1,5 @@
 {
-  "minimumVersionCode": 8,
+  "minimumVersionCode": 11,
   "package": "dev.riposte.personal",
   "certificateSha256": "e0a36491d96e832000c6dacd06a715ac1bd6780ebfdd4dad5b059f456aec5bb5",
   "required": {
@@ -41,11 +41,13 @@
       "Preparation",
       "lenses",
       "Latest score ratings",
+      "ratingHistory",
+      "RatingSparkline",
       "Sort fencers:",
       "rememberFencerStrength",
       "Show more fencers",
       "Close session",
-      "repo.closeSession(active.id)"
+      "review=active;closing=true"
     ],
     "core/src/main/kotlin/dev/riposte/core/TrackerDefinitions.kt": [
       "data class TrackerRevision"
@@ -68,8 +70,9 @@
     "app/src/main/kotlin/dev/riposte/app/InsightsScreen.kt": [
       "PerformancePicker",
       "ObservationChart",
-      "Compare with life",
-      "Opponent baselines",
+      "Fencing performance vs life metric",
+      "EquipmentInsights",
+      "observationSourceLabel",
       "ScreenTimeChartHint",
       "chartableMetrics",
       "screenTimeChartNote"
@@ -86,7 +89,8 @@
     "insights/src/main/kotlin/dev/riposte/insights/FencingAnalysis.kt": [
       "fun opponentStrength",
       "fun performancePoints",
-      "fun matchPerformance"
+      "fun matchPerformance",
+      "ratingHistory"
     ],
     "life/src/main/kotlin/dev/riposte/life/Life.kt": [
       "fun chartableMetrics"
@@ -100,6 +104,26 @@
     ],
     "app/src/main/res/values/strings.xml": [
       "<string name=\"app_name\">SchermaVita</string>"
+    ],
+    "app/src/main/kotlin/dev/riposte/app/SessionReview.kt": [
+      "fun ReflectionForm",
+      "Save and close",
+      "current.settings.copy(activeSession=\"\")",
+      "fun SessionJournal",
+      "fun ProcessEditor"
+    ],
+    "app/src/main/kotlin/dev/riposte/app/EquipmentScreen.kt": [
+      "fun EquipmentScreen",
+      "Confirm merge",
+      "Create from this"
+    ],
+    "life/src/main/kotlin/dev/riposte/life/CompatibleSeries.kt": [
+      "fun compatibleDailyValues",
+      "fun rollingMean"
+    ],
+    "life/src/main/kotlin/dev/riposte/life/InsightData.kt": [
+      "fun insightData",
+      "legacy:unified_mood"
     ]
   },
   "tests": [
@@ -465,6 +489,13 @@
       "kind": "test",
       "file": "insights/src/test/kotlin/dev/riposte/insights/FencingAnalysisTest.kt",
       "class": "dev.riposte.insights.FencingAnalysisTest",
+      "name": "ratingHistoryTracksDailyWeaponRatings"
+    },
+    {
+      "module": "insights",
+      "kind": "test",
+      "file": "insights/src/test/kotlin/dev/riposte/insights/FencingAnalysisTest.kt",
+      "class": "dev.riposte.insights.FencingAnalysisTest",
       "name": "provisionalThresholdAndWeightedAdjustedPerformance"
     },
     {
@@ -514,6 +545,13 @@
       "kind": "test",
       "file": "app/src/test/kotlin/dev/riposte/app/InsightsPresentationTest.kt",
       "class": "dev.riposte.app.InsightsPresentationTest",
+      "name": "dateBasisLabelsDistinguishHistoricalAndTrackingSources"
+    },
+    {
+      "module": "app",
+      "kind": "test",
+      "file": "app/src/test/kotlin/dev/riposte/app/InsightsPresentationTest.kt",
+      "class": "dev.riposte.app.InsightsPresentationTest",
       "name": "currentScreenTimeShowsMinutesSoFarAndMeasurementTimeWhenSyncOff"
     },
     {
@@ -521,7 +559,7 @@
       "kind": "androidTest",
       "file": "app/src/androidTest/kotlin/dev/riposte/app/InsightsDeviceTest.kt",
       "class": "dev.riposte.app.InsightsDeviceTest",
-      "name": "performanceChartsMatchScreenTimeAndShowOpponentBaselines"
+      "name": "performanceChartsUnifyDateSourcesAndHideOpponentBaselines"
     },
     {
       "module": "app",
@@ -564,6 +602,111 @@
       "file": "app/src/androidTest/kotlin/dev/riposte/app/TrackerDeviceTest.kt",
       "class": "dev.riposte.app.TrackerDeviceTest",
       "name": "closeSessionPreservesHistoryPersistsAndCanResume"
+    },
+    {
+      "module": "life",
+      "kind": "test",
+      "file": "life/src/test/kotlin/dev/riposte/life/CompatibleSeriesTest.kt",
+      "class": "dev.riposte.life.CompatibleSeriesTest",
+      "name": "compatibleRevisionsResolveDailyPrecedenceWithoutDuplicatingDays"
+    },
+    {
+      "module": "life",
+      "kind": "test",
+      "file": "life/src/test/kotlin/dev/riposte/life/CompatibleSeriesTest.kt",
+      "class": "dev.riposte.life.CompatibleSeriesTest",
+      "name": "rangesUnknownDefinitionsAndDateBasesRemainDistinct"
+    },
+    {
+      "module": "life",
+      "kind": "test",
+      "file": "life/src/test/kotlin/dev/riposte/life/CompatibleSeriesTest.kt",
+      "class": "dev.riposte.life.CompatibleSeriesTest",
+      "name": "rollingMeansUseObservedCalendarDaysAndRequireTwoDays"
+    },
+    {
+      "module": "app",
+      "kind": "test",
+      "file": "app/src/test/kotlin/dev/riposte/app/UnifiedFeaturesTest.kt",
+      "class": "dev.riposte.app.UnifiedFeaturesTest",
+      "name": "equipmentMigrationIsIdempotentAndRespectsOwnership"
+    },
+    {
+      "module": "app",
+      "kind": "test",
+      "file": "app/src/test/kotlin/dev/riposte/app/UnifiedFeaturesTest.kt",
+      "class": "dev.riposte.app.UnifiedFeaturesTest",
+      "name": "duplicateMergePreservesNamesAndComponentStatistics"
+    },
+    {
+      "module": "app",
+      "kind": "test",
+      "file": "app/src/test/kotlin/dev/riposte/app/UnifiedFeaturesTest.kt",
+      "class": "dev.riposte.app.UnifiedFeaturesTest",
+      "name": "filtersPreserveUnknownAndProcessRatingIsIndependent"
+    },
+    {
+      "module": "app",
+      "kind": "test",
+      "file": "app/src/test/kotlin/dev/riposte/app/UnifiedFeaturesTest.kt",
+      "class": "dev.riposte.app.UnifiedFeaturesTest",
+      "name": "reflectionAndGoalSnapshotsSurviveSerializationAndTemplateEdits"
+    },
+    {
+      "module": "app",
+      "kind": "androidTest",
+      "file": "app/src/androidTest/kotlin/dev/riposte/app/UnifiedFeaturesDeviceTest.kt",
+      "class": "dev.riposte.app.UnifiedFeaturesDeviceTest",
+      "name": "reflectionPromptPersistsAnswersAndJournalDoesNotActivateSession"
+    },
+    {
+      "module": "app",
+      "kind": "androidTest",
+      "file": "app/src/androidTest/kotlin/dev/riposte/app/UnifiedFeaturesDeviceTest.kt",
+      "class": "dev.riposte.app.UnifiedFeaturesDeviceTest",
+      "name": "compatibleChartsCombineAndOfferSeparateAndRollingViews"
+    },
+    {
+      "module": "app",
+      "kind": "androidTest",
+      "file": "app/src/androidTest/kotlin/dev/riposte/app/UnifiedFeaturesDeviceTest.kt",
+      "class": "dev.riposte.app.UnifiedFeaturesDeviceTest",
+      "name": "equipmentProfilesRetainBrokenHistoryAndCanCreateConfiguration"
+    },
+    {
+      "module": "app",
+      "kind": "test",
+      "file": "app/src/test/kotlin/dev/riposte/app/UnifiedFeaturesTest.kt",
+      "class": "dev.riposte.app.UnifiedFeaturesTest",
+      "name": "healthSyncRetainsFailedDisabledAndManualReadingsWithoutDuplicates"
+    },
+    {
+      "module": "app",
+      "kind": "androidTest",
+      "file": "app/src/androidTest/kotlin/dev/riposte/app/UnifiedFeaturesDeviceTest.kt",
+      "class": "dev.riposte.app.UnifiedFeaturesDeviceTest",
+      "name": "processRatingAndGoalFlagsStaySeparateFromSelfEvaluation"
+    },
+    {
+      "module": "life",
+      "kind": "test",
+      "file": "life/src/test/kotlin/dev/riposte/life/InsightDataTest.kt",
+      "class": "dev.riposte.life.InsightDataTest",
+      "name": "historicalMoodSharesHappinessChartWithoutChangingStoredData"
+    },
+    {
+      "module": "life",
+      "kind": "test",
+      "file": "life/src/test/kotlin/dev/riposte/life/InsightDataTest.kt",
+      "class": "dev.riposte.life.InsightDataTest",
+      "name": "unknownScalesAndUnrelatedHistoryAreNotSilentlyMerged"
+    },
+    {
+      "module": "app",
+      "kind": "androidTest",
+      "file": "app/src/androidTest/kotlin/dev/riposte/app/UnifiedFeaturesDeviceTest.kt",
+      "class": "dev.riposte.app.UnifiedFeaturesDeviceTest",
+      "name": "historicalMoodAppearsWithHappinessAndCanBeSeparated"
     }
   ]
 }

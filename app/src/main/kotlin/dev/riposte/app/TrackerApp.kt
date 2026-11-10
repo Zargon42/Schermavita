@@ -9,7 +9,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.work.*
 import dev.riposte.core.*
-import dev.riposte.health.HealthReader
+import dev.riposte.health.*
+import dev.riposte.life.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
 import java.time.*
@@ -26,11 +27,22 @@ class TrackerApp: Application() {
 }
 suspend fun syncHealth(repo: AppRepository) {
     val reader=HealthReader(repo.context); if(!reader.available) { repo.change { it.copy(settings=it.settings.copy(healthStatus="Health Connect is unavailable")) }; return }
-    val granted=reader.granted(); if(granted.intersect(reader.permissions).isEmpty()) { repo.change { it.copy(settings=it.settings.copy(healthStatus="Steps and sleep access not granted")) }; return }
-    val s=repo.state.value; val days=(0..7).map { DayClock.day(Instant.now().minus(Duration.ofDays(it.toLong())),ZoneId.systemDefault(),s.settings.boundaryRules,s.days) }.distinctBy { it.id }
-    val events=reader.read(days)
-    repo.change { current -> current.copy(days=(current.days+days).distinctBy { it.id },observations=current.observations.filterNot { old-> old.origin.source=="Health Connect" && old.stamp.day in days.map { it.label } && ((old.metric=="steps" && "android.permission.health.READ_STEPS" in granted) || (old.metric=="sleep" && "android.permission.health.READ_SLEEP" in granted)) }+events,
-        settings=current.settings.copy(lastHealthSync=Instant.now().toString(),healthStatus="Connected · last 8 tracking days refreshed")) }
+    val granted=reader.granted(); val s=repo.state.value
+    val days=(0..7).map {DayClock.day(Instant.now().minus(Duration.ofDays(it.toLong())),ZoneId.systemDefault(),s.settings.boundaryRules,s.days)}.distinctBy {it.id}
+    val events=mutableListOf<Observation>();val statuses=mutableMapOf<String,String>();val synced=mutableMapOf<String,String>();val successful=mutableSetOf<String>()
+    for(metric in healthMetrics.filter {it.id in s.settings.healthImports}) {
+        if(metric.permissionName() !in granted) {statuses[metric.id]="Permission not granted";continue}
+        try {val rows=reader.read(days,setOf(metric.id));events.addAll(rows);successful.add(metric.id);statuses[metric.id]=if(rows.isEmpty()) "No data available" else "Connected";synced[metric.id]=Instant.now().toString()}
+        catch(e: kotlinx.coroutines.CancellationException) {throw e}
+        catch(e: Exception) {statuses[metric.id]="Read failed; saved history retained"}
+    }
+    repo.change {current->
+        val enabled=successful.intersect(current.settings.healthImports)
+        current.copy(days=(current.days+days).distinctBy {it.id},metrics=(current.metrics+healthMetricDefinitions()).distinctBy {it.id},
+            observations=mergeHealthReadings(current.observations,events,days.map {it.label}.toSet(),successful,current.settings.healthImports),
+            settings=current.settings.copy(lastHealthSync=if(successful.isNotEmpty()) Instant.now().toString() else current.settings.lastHealthSync,healthStatus="Health Connect imports checked",healthMetricStatus=current.settings.healthMetricStatus+statuses,healthMetricSync=current.settings.healthMetricSync+synced))
+    }
+
 }
 class HealthWorker(context: Context,params: WorkerParameters): CoroutineWorker(context,params) {
     override suspend fun doWork(): Result {

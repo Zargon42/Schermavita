@@ -51,13 +51,14 @@ class TrackerDeviceTest {
         }
         openFencing()
         compose.onNodeWithText("Close session").performScrollTo().performClick()
+        compose.onNodeWithText("Skip").performScrollTo().performClick()
         compose.waitUntil(10000) {repo.state.value.settings.activeSession.isBlank()}
         compose.onNodeWithText("No active session.",substring=true).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Add bout").assertDoesNotExist()
         val reopened=AppRepository(compose.activity.applicationContext)
         runBlocking {reopened.load()}
         assertEquals("",reopened.state.value.settings.activeSession)
-        assertEquals(listOf(session),reopened.state.value.sessions)
+        assertEquals(session.copy(swordId=repo.state.value.sessions.single().swordId,reflection=SessionReflection(status="Skipped")),reopened.state.value.sessions.single())
         assertEquals(listOf(bout),reopened.state.value.bouts)
         assertEquals(listOf(lesson),reopened.state.value.lessons)
         compose.onNodeWithText("Evening practice").performScrollTo().performClick()

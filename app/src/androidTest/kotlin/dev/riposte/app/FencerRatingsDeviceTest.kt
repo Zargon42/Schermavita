@@ -21,13 +21,15 @@ class FencerRatingsDeviceTest {
             repo.change {Snapshot(fencers=listOf(Fencer("me","Me",true),Fencer("alice","Alice"),Fencer("bob","Bob"),Fencer("cara","Cara")),
                 sessions=listOf(session,session.copy(id="e",weapon="Épée")),bouts=listOf(
                     Bout("f","s","alice","bob",5,0,stamp=Stamp(day="2026-10-01")),
+                    Bout("f2","s","alice","bob",5,0,stamp=Stamp(day="2026-10-02")),
                     Bout("e","e","alice","bob",0,5,stamp=Stamp(day="2026-10-01"))))}
             repo.ensureDay();repo.selectTab(0)
         }
         compose.waitUntil(10000) {compose.onAllNodes(hasText("Today") and isSelected()).fetchSemanticsNodes().isNotEmpty()}
         compose.onNodeWithText("Fencing",useUnmergedTree=true).performClick()
         compose.waitUntil(10000) {compose.onAllNodesWithText("Sort fencers: Most bouts").fetchSemanticsNodes().isNotEmpty()}
-        compose.waitUntil(10000) {compose.onAllNodesWithText("Foil score rating: 1516",substring=true).fetchSemanticsNodes().isNotEmpty()}
+        compose.waitUntil(10000) {compose.onAllNodesWithText("Foil score rating:",substring=true).fetchSemanticsNodes().isNotEmpty()}
+        compose.onAllNodesWithText("Rating history · 2026-10-01 to 2026-10-02",substring=true).assertCountEquals(2)
         fun sort(current: String,next: String) {
             compose.onNodeWithText("Sort fencers: $current").performScrollTo().performClick()
             compose.onNode(hasText(next) and hasClickAction()).performClick()

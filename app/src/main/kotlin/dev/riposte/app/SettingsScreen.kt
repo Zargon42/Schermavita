@@ -35,11 +35,26 @@ import java.time.*
             Hint("Android may delay reminders to save battery. If needed, allow notifications and background activity for $appName in HyperOS settings.")
         }
         Panel("Steps & sleep") {
+            healthMetrics.forEach {metric->
+                Row {Switch(metric.id in s.settings.healthImports,{enabled->run {repo.change {it.copy(settings=it.settings.copy(healthImports=if(enabled) it.settings.healthImports+metric.id else it.settings.healthImports-metric.id))}}});Text(metric.name)}
+                Hint(if(metric.id !in s.settings.healthImports) "Disabled · saved history retained" else if(!health.available) "Unavailable on this device" else s.settings.healthMetricStatus[metric.id] ?: "Not synced")
+                Hint("Last sync: "+(s.settings.healthMetricSync[metric.id] ?: "Never"))
+            }
             Text(s.settings.healthStatus);Hint("Last successful sync: ${s.settings.lastHealthSync.ifBlank {"Never"}}")
-            Button(onClick={if(health.available) permissions.launch(health.permissions) else saved="Install or update Health Connect in Android settings."}) {Text("Connect Health Connect")}
-            TextButton(onClick={if(health.available) permissions.launch(health.permissions+"android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND")}) {Text("Allow background reading")}
+            Button(onClick={if(health.available) permissions.launch(health.permissionsFor(s.settings.healthImports)) else saved="Install or update Health Connect in Android settings."}) {Text("Connect Health Connect")}
+            TextButton(onClick={if(health.available) permissions.launch(health.permissionsFor(s.settings.healthImports)+"android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND")}) {Text("Allow background reading")}
             OutlinedButton(onClick={run {syncHealth(repo)}}) {Text("Refresh now")}
             Hint("In Google Health, allow writing steps and sleep to Health Connect. $appName reads them; it does not write health data back.")
+        }
+        Panel("Manual recovery scores") {
+            Hint("Readiness and sleep scores are not imported from Health Connect. Add optional manual 0–100 trackers.")
+            val scoreIds=setOf("manual_readiness","manual_sleep_score")
+            val scoresAdded=s.metrics.map {it.id}.containsAll(scoreIds)
+            Button(enabled=!scoresAdded,onClick={run {repo.change {current->current.copy(metrics=(current.metrics+listOf(dev.riposte.life.Metric(id="manual_readiness",name="Readiness (manual)",kind="Number",min=0.0,max=100.0,scale="score-0-100"),dev.riposte.life.Metric(id="manual_sleep_score",name="Sleep score (manual)",kind="Number",min=0.0,max=100.0,scale="score-0-100"))).distinctBy {it.id})}}}) {Text(if(scoresAdded) "Manual score trackers added" else "Add manual score trackers")}
+            if(scoresAdded) {
+                Hint("Readiness and Sleep score trackers are saved. Enter scores in Today > Quick entry.")
+                if(s.metrics.any {it.id in scoreIds && it.hidden}) Hint("A score tracker is hidden. Show it in Configure trackers to use Quick entry.")
+            }
         }
         Panel("Screen time") {
             Text(s.settings.screenTimeStatus)

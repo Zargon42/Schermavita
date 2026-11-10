@@ -2,7 +2,7 @@ import java.util.Properties
 plugins { id("com.android.application"); kotlin("android"); kotlin("plugin.serialization"); kotlin("kapt"); id("org.jetbrains.kotlin.plugin.compose") }
 android {
     namespace="dev.riposte.app"; compileSdk=36
-    defaultConfig { applicationId="dev.riposte.personal"; minSdk=28; targetSdk=36; versionCode=8; versionName="0.6.2"; testInstrumentationRunner="androidx.test.runner.AndroidJUnitRunner" }
+    defaultConfig { applicationId="dev.riposte.personal"; minSdk=28; targetSdk=36; versionCode=11; versionName="0.7.1"; testInstrumentationRunner="androidx.test.runner.AndroidJUnitRunner" }
     buildFeatures { compose=true; buildConfig=true }
     compileOptions { sourceCompatibility=JavaVersion.VERSION_21; targetCompatibility=JavaVersion.VERSION_21 }
     kotlinOptions { jvmTarget="21" }

@@ -18,7 +18,7 @@ fun defaultMetrics(): List<Metric> {
     val symptoms=listOf("Headache","Neck ache","Fatigue","Sneezing","Congestion","Cough","Digestive symptoms","Skin / eyes").map { Metric("symptom_"+it.lowercase().replace(Regex("[^a-z]+"),"_"),it,"Rating",min=0.0,max=3.0,scale="severity-0-3",symptom=true) }
     return (ratings+rest+symptoms).mapIndexed { i,m->m.copy(order=i) }
 }
-data class DailyValue(val day: String, val value: Double, val basis: String, val scale: String, val scope: String, val count: Int)
+data class DailyValue(val day: String, val value: Double, val basis: String, val scale: String, val scope: String, val count: Int, val revision: String = scale)
 fun chartableMetrics(metrics: List<Metric>): List<Metric> =
     (metrics + if(metrics.none {it.id=="screen_time"}) listOf(Metric("screen_time","Screen time","Duration","min",0.0,2880.0,"unlocked-screen-minutes",hidden=true)) else emptyList())
         .filter {it.kind !in listOf("Text","Tag")}

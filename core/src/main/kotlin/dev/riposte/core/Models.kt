@@ -30,6 +30,7 @@ fun newId(): String = UUID.randomUUID().toString()
     val screenTimeEnabled: Boolean = false, val lastScreenTimeSync: String = "", val screenTimeStatus: String = "Not connected",
     val sessionTrackers: List<TrackerRevision> = defaultSessionTrackers(),
     val equipmentCategories: List<EquipmentCategory> = emptyList(),
+    val healthImports: Set<String> = setOf("steps","sleep"), val healthMetricStatus: Map<String,String> = emptyMap(), val healthMetricSync: Map<String,String> = emptyMap(),
     val tacticalTags: List<String> = listOf("Distance", "Timing", "Preparation", "Attack", "Parry / riposte", "Counterattack", "Footwork", "Focus")
 )
 @Serializable data class ImportBatch(val id: String, val name: String, val hash: String,

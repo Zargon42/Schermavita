@@ -94,6 +94,20 @@ The complete private maintainer validation uses `tools/run-device-tests.ps1 -Wit
 
 Version 0.6.2 (code 8) renames the display name to SchermaVita. The original application ID, data formats and signing key are preserved. The source export omits APKs and signing material. No application license has been selected for publication; existing third-party notices are retained.
 
+## Version 0.7: equipment, reflection and combined Insights
+
+In **Fencing > Equipment**, create individual foils and gloves, record their properties and first-used date, and mark broken or retired items without deleting their history. Use **Create from this foil** when replacing a blade or changing its configuration. **Edit** corrects a profile's recorded properties. Duplicate merging keeps the selected destination's properties and adds the source name as an alias; review those properties before confirming.
+
+Session goals appear in the bout form beside a separate **Plan/process execution** rating. Each goal has Yes, No and Unknown application choices. These answers do not change your existing subjective execution rating. Closing a session opens optional reflection notes and recurring questions. Configure questions under **Reflection questions**; reorder or archive them there. **Session journal** collects goals, preparation, lessons, bouts and reflections without resuming the session.
+
+Insights defaults to **Combined** for revisions of the same tracker with equal type, range and units. Changed wording is retained in saved definitions. Revision and date-source selectors allow narrower analysis; **Separate** restores individual revision charts. Calendar and tracking-day data can share a chart but remain separate when pairing observations. Equipment cards summarize one component at a time. Session filters apply before daily aggregation, and Unknown never means No.
+
+Time-series charts offer optional 7-, 14- and 28-calendar-day trailing means. Only observed days contribute, each with equal weight; at least two observed days are needed. Missing days are not zero. Raw points remain visible, and regression is still available separately.
+
+Version 0.7.1 includes imported historical Mood under **Mood (Happiness)** when the rating ranges and units match. Its original measurement name remains in the legend, and **Separate** or the revision/source selectors allow independent analysis. Saved historical records remain unchanged. Smaller chart markers and a thin selection outline reduce overlap.
+
+Health Connect imports have individual switches. Existing steps and sleep access is retained; additional imports start disabled. Enable a metric, then use **Connect Health Connect** to grant its permission. Disabling an import preserves saved history. Recovery scores are optional manual 0–100 trackers, not Fitbit/Google Health score imports. Provider-specific cloud integration is not included in this release.
+
 ## Device checks
 
 See `VALIDATION.md` for completed automated checks and physical-phone checks. Emulator tests cannot establish Fitbit synchronisation, Xiaomi background scheduling, real handwriting recognition, or your personal entry speed.
