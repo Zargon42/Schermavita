@@ -21,6 +21,7 @@ import java.util.zip.*
     val sessions: List<Session> = emptyList(), val bouts: List<Bout> = emptyList(), val days: List<TrackingDay> = emptyList(),
     val metrics: List<Metric> = defaultMetrics(), val observations: List<Observation> = emptyList(), val reviews: List<DailyReview> = emptyList(),
     val batches: List<ImportBatch> = emptyList(), val attachments: List<SourceAttachment> = emptyList(), val settings: Settings = Settings(),
+    val equipmentProfiles: List<EquipmentProfile> = emptyList(), val reflectionQuestions: List<ReflectionQuestion> = emptyList(),
     val lessons: List<Lesson> = emptyList()
 ) {
     val me get() = fencers.single { it.isMe }.id
@@ -29,8 +30,14 @@ import java.util.zip.*
         require(version==2) { "Unsupported backup version." }
         require(fencers.count { it.isMe }==1) { "Exactly one personal profile is required." }
         fun unique(ids: List<String>) { require(ids.size==ids.toSet().size) { "Duplicate record identifiers." } }
+        unique(equipmentProfiles.map {it.id}); unique(reflectionQuestions.map {it.id});
         unique(fencers.map { it.id }); unique(sessions.map { it.id }); unique(bouts.map { it.id }); unique(lessons.map { it.id }); unique(metrics.map { it.id }); unique(observations.map { it.id }); unique(attachments.map { it.id })
         val people=fencers.map { it.id }.toSet(); val groups=sessions.map { it.id }.toSet(); val definitions=metrics.map { it.id }.toSet()
+        equipmentProfiles.forEach {require(it.name.isNotBlank() && it.owner in people && it.kind in listOf("Foil","Glove"));if(it.firstUsed.isNotBlank()) LocalDate.parse(it.firstUsed)}
+        reflectionQuestions.forEach {require(it.title.isNotBlank() && it.kind in listOf("Text","Rating","Yes/no","Choice"));if(it.kind=="Choice") require(it.options.isNotEmpty() && it.options.none {v->v.isBlank()} && it.options.distinct().size==it.options.size)}
+        fun equipmentReference(id: String,owner: String,kind: String) {require(id.isBlank() || equipmentProfiles.any {it.id==id && it.owner==owner && it.kind==kind}) {"Invalid equipment reference"}}
+        sessions.forEach {equipmentReference(it.swordId,me,"Foil");equipmentReference(it.gloveId,me,"Glove");unique(it.goals.map {g->g.id})}
+        bouts.forEach {b->listOf(b.a to b.detailsA,b.b to b.detailsB).forEach {(owner,d)->equipmentReference(d.swordId,owner,"Foil");equipmentReference(d.gloveId,owner,"Glove");d.process?.let {value->require(value.isFinite() && value in 0.0..5.0 && value*2%1.0==0.0)}}}
         bouts.forEach { require(it.a in people && it.b in people && it.a!=it.b && it.sessionId in groups) { "A bout references an invalid participant or session." } }
         lessons.forEach { require(it.sessionId in groups) { "A lesson references an invalid session." }; it.validate() }
         observations.forEach { require(it.metric in definitions) { "Unknown metric ${it.metric}" }; require(it.value?.isFinite()!=false); if(it.stamp.day.isNotBlank()) LocalDate.parse(it.stamp.day) }
@@ -76,6 +83,8 @@ class AppRepository(val context: Context): FencingRepository {
         val previous=old.associateBy(key);return items.filter {previous[key(it)]!=it}
     }
     private fun records(s: Snapshot,old: Snapshot?=null): List<Record> = buildList {
+        addAll(changed(s.equipmentProfiles,old?.equipmentProfiles) {it.id}.map {record("equipment",it.id,it)})
+        if(s.reflectionQuestions!=old?.reflectionQuestions) add(record("questions","main",s.reflectionQuestions))
         if(s.settings!=old?.settings) add(record("settings","main",s.settings))
         addAll(changed(s.fencers,old?.fencers) {it.id}.map { record("fencer",it.id,it) }); addAll(changed(s.sessions,old?.sessions) {it.id}.map { record("session",it.id,it,it.stamp.day,it.origin.batchId) })
         addAll(changed(s.lessons,old?.lessons) {it.id}.map { record("lesson",it.id,it) })
@@ -83,19 +92,20 @@ class AppRepository(val context: Context): FencingRepository {
         addAll(changed(s.metrics,old?.metrics) {it.id}.map { record("metric",it.id,it) }); addAll(changed(s.observations,old?.observations) {it.id}.map { record("observation",it.id,it,it.stamp.day,it.origin.batchId) })
         addAll(changed(s.reviews,old?.reviews) {it.id}.map { record("review",it.id,it,it.day) }); addAll(changed(s.batches,old?.batches) {it.id}.map { record("batch",it.id,it) }); addAll(changed(s.attachments,old?.attachments) {it.id}.map { record("attachment",it.id,it,batch=it.batchId) })
     }
-    private fun keys(s: Snapshot): Set<String> = (listOf("settings/main")+s.fencers.map {"fencer/${it.id}"}+s.sessions.map {"session/${it.id}"}+s.lessons.map {"lesson/${it.id}"}+s.bouts.map {"bout/${it.id}"}+s.days.map {"day/${it.id}"}+s.metrics.map {"metric/${it.id}"}+s.observations.map {"observation/${it.id}"}+s.reviews.map {"review/${it.id}"}+s.batches.map {"batch/${it.id}"}+s.attachments.map {"attachment/${it.id}"}).toSet()
+    private fun keys(s: Snapshot): Set<String> = (listOf("settings/main","questions/main")+s.equipmentProfiles.map {"equipment/${it.id}"}+s.fencers.map {"fencer/${it.id}"}+s.sessions.map {"session/${it.id}"}+s.lessons.map {"lesson/${it.id}"}+s.bouts.map {"bout/${it.id}"}+s.days.map {"day/${it.id}"}+s.metrics.map {"metric/${it.id}"}+s.observations.map {"observation/${it.id}"}+s.reviews.map {"review/${it.id}"}+s.batches.map {"batch/${it.id}"}+s.attachments.map {"attachment/${it.id}"}).toSet()
     suspend fun load() = withContext(Dispatchers.IO) { lock.withLock {
         val all=db.records().all()
         if(all.isNotEmpty()) {
             fun kind(k: String)=all.filter { it.kind==k }.map { it.payload }
-            mutable.value=Snapshot(fencers=kind("fencer").map { codec.decodeFromString(it) },sessions=kind("session").map { codec.decodeFromString(it) },
+            mutable.value=Snapshot(equipmentProfiles=kind("equipment").map {codec.decodeFromString(it)},reflectionQuestions=kind("questions").firstOrNull()?.let {codec.decodeFromString(it)} ?: emptyList(),fencers=kind("fencer").map { codec.decodeFromString(it) },sessions=kind("session").map { codec.decodeFromString(it) },
                 bouts=kind("bout").map { codec.decodeFromString(it) },lessons=kind("lesson").map { codec.decodeFromString(it) },days=kind("day").map { codec.decodeFromString(it) },metrics=kind("metric").map { codec.decodeFromString(it) },
                 observations=kind("observation").map { codec.decodeFromString(it) },reviews=kind("review").map { codec.decodeFromString(it) },batches=kind("batch").map { codec.decodeFromString(it) },attachments=kind("attachment").map { codec.decodeFromString(it) },settings=kind("settings").firstOrNull()?.let { codec.decodeFromString(it) } ?: Settings())
         } else db.records().put(records(mutable.value))
+        val migrated=mutable.value.migrateEquipment(); if(migrated!=mutable.value) {db.records().put(records(migrated,mutable.value));mutable.value=migrated}
         ready.value=true
     } }
     suspend fun change(transform: (Snapshot)->Snapshot) = withContext(Dispatchers.IO) { lock.withLock {
-        check(ready.value); val old=mutable.value; val next=transform(old); next.validate()
+        check(ready.value); val old=mutable.value; val next=transform(old).migrateEquipment(); next.validate()
         val removed=keys(old)-keys(next);val updates=records(next,old)
         db.withTransaction {
             removed.chunked(500).forEach { db.records().remove(it) }
@@ -118,6 +128,7 @@ class AppRepository(val context: Context): FencingRepository {
         require(!original.isMe) { "Keep your personal profile." }
         require(s.bouts.none { it.contains(from) && it.contains(to) }) { "These fencers have bouts against one another; resolve those records before merging." }
         s.copy(fencers=s.fencers.filter { it.id!=from }.map { if(it.id==to) it.copy(aliases=(it.aliases+original.aliases+original.name).distinct()) else it },
+            equipmentProfiles=s.equipmentProfiles.map {if(it.owner==from) it.copy(owner=to) else it},
             bouts=s.bouts.map { it.copy(a=if(it.a==from) to else it.a,b=if(it.b==from) to else it.b) })
     } }
     fun sourceFile(id: String): File { require(id.matches(Regex("[a-zA-Z0-9_-]{8,100}"))); return File(context.filesDir,"sources/$id") }

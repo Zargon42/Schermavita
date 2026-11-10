@@ -8,6 +8,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -20,45 +21,62 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.*
 
-data class ChartDot(val x: Double,val y: Double,val series: String,val detail: String)
+data class ChartDot(val x: Double,val y: Double,val series: String,val detail: String,val basis: String = if(series.contains("Historical calendar") || series=="calendar") "calendar" else "tracking",val trendSeries: String = series,val colorKey: String = series.substringBefore(" · Tracking-day").substringBefore(" · Historical calendar"))
 
-@Composable fun ObservationChart(dots: List<ChartDot>,xAxis: String,yAxis: String,zero: Boolean=false,dateAxis: Boolean=false) {
+@Composable fun ObservationChart(dots: List<ChartDot>,xAxis: String,yAxis: String,zero: Boolean=false,dateAxis: Boolean=false,yBounds: Pair<Double,Double>?=null,xBounds: Pair<Double,Double>?=null) {
+    var trend by remember {mutableStateOf("Off")}
     var regression by remember {mutableStateOf(false)}
     var selected by remember(dots) {mutableStateOf<Int?>(null)}
     val colors=listOf(MaterialTheme.colorScheme.primary,MaterialTheme.colorScheme.tertiary,MaterialTheme.colorScheme.secondary)
     val groups=dots.groupBy {it.series}
     val lines=if(regression) groups.mapValues {regressionLine(it.value.map {p->p.x to p.y})} else emptyMap()
     val allY=dots.map {it.y}+lines.values.flatten().map {it.second}+if(zero) listOf(0.0) else emptyList()
-    val observedLo=allY.minOrNull() ?: 0.0; val observedHi=allY.maxOrNull() ?: 1.0
+    val observedLo=yBounds?.first ?: allY.minOrNull() ?: 0.0; val observedHi=yBounds?.second ?: allY.maxOrNull() ?: 1.0
     val lo=if(observedLo==observedHi) observedLo-.5 else observedLo
     val hi=if(observedLo==observedHi) observedHi+.5 else observedHi
-    val minX=dots.minOfOrNull {it.x} ?: 0.0; val maxX=dots.maxOfOrNull {it.x} ?: 1.0
+    val minX=xBounds?.first ?: dots.minOfOrNull {it.x} ?: 0.0; val maxX=xBounds?.second ?: dots.maxOfOrNull {it.x} ?: 1.0
     fun position(x: Double,y: Double,w: Float,h: Float) = Offset(
         if(minX==maxX) w/2 else (12+(x-minX)/(maxX-minX)*(w-24)).toFloat(),
         (h-12-(y-lo)/(hi-lo)*(h-24)).toFloat())
+    if(dateAxis) {Text("Trend");Chips(listOf("Off","7","14","28"),trend,{trend=it})}
+    val smooth=if(dateAxis && trend!="Off") dots.groupBy {it.trendSeries to it.basis}.mapValues {rollingMean(it.value.map {p->p.x to p.y},trend.toInt())} else emptyMap()
+    smooth.forEach {(key,points)->points.lastOrNull()?.let {Hint("${key.first}: ${trend}-day mean ${decimal(it.value)} · ${it.count} observed days")}}
     FilterChip(regression,onClick={regression=!regression},label={Text("Regression line")})
     Text("Y: $yAxis · ${decimal(lo)} to ${decimal(hi)}",style=MaterialTheme.typography.labelMedium)
     if(dots.isEmpty()) Hint("No matching observations. Try a wider range or different filters.")
+    if(dots.any {it.basis=="calendar"}) Hint("Circles: tracking-day dates. Squares: historical calendar dates.")
     Canvas(Modifier.fillMaxWidth().height(170.dp)
         .semantics {contentDescription="$yAxis by $xAxis; ${dots.size} observations. Use Inspect first point and Next point for values."}
         .pointerInput(dots,lo,hi) {detectTapGestures {tap ->
             selected=dots.indices.minByOrNull {i->(position(dots[i].x,dots[i].y,size.width.toFloat(),size.height.toFloat())-tap).getDistance()}
         }}) {
         drawLine(Color.Gray.copy(alpha=.4f),Offset(12f,size.height-12),Offset(size.width-12,size.height-12))
+        val tickPaint=android.graphics.Paint().apply {color=android.graphics.Color.LTGRAY;textSize=11.dp.toPx();isAntiAlias=true}
+        listOf(lo,(lo+hi)/2,hi).forEach {value->
+            val y=position(minX,value,size.width,size.height).y
+            drawLine(Color.Gray.copy(alpha=.2f),Offset(12f,y),Offset(size.width-12,y))
+            drawContext.canvas.nativeCanvas.drawText(decimal(value),16f,(y-4).coerceAtLeast(tickPaint.textSize),tickPaint)
+        }
         if(zero && dots.isNotEmpty()) {
             val y=position(minX,0.0,size.width,size.height).y
             drawLine(Color.Gray,Offset(12f,y),Offset(size.width-12,y),strokeWidth=2f)
         }
+        smooth.values.forEach {points->points.zipWithNext().filter {it.second.day-it.first.day<=trend.toInt()}.forEach {(a,b)->drawLine(colors[1],position(a.day,a.value,size.width,size.height),position(b.day,b.value,size.width,size.height),strokeWidth=4f)}}
         groups.keys.forEachIndexed {i,name ->
-            val color=colors[i%colors.size]
+            val color=Color.hsv((groups.getValue(name).first().colorKey.hashCode().toLong().let {kotlin.math.abs(it)}%360).toFloat(),0.45f,0.9f)
             val line=lines[name].orEmpty()
             if(line.size==2) drawLine(color.copy(alpha=.7f),position(line.first().first,line.first().second,size.width,size.height),position(line.last().first,line.last().second,size.width,size.height),strokeWidth=2f)
-            dots.forEachIndexed {index,p->if(p.series==name) drawCircle(color,if(selected==index) 7f else 4f,position(p.x,p.y,size.width,size.height))}
+            dots.forEachIndexed {index,p->if(p.series==name) {
+                val pos=position(p.x,p.y,size.width,size.height)
+                val radius=2.dp.toPx()
+                if(p.basis=="calendar") drawRect(color,pos-Offset(radius,radius),androidx.compose.ui.geometry.Size(radius*2,radius*2)) else drawCircle(color,radius,pos)
+                if(selected==index) drawCircle(color,4.dp.toPx(),pos,style=androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
+            }}
         }
     }
     val xRange=if(dateAxis) "${LocalDate.ofEpochDay(minX.toLong())} — ${LocalDate.ofEpochDay(maxX.toLong())}" else "${decimal(minX)} to ${decimal(maxX)}"
     Text("X: $xAxis${if(dots.isEmpty()) "" else " · $xRange"}",style=MaterialTheme.typography.labelMedium)
-    groups.keys.forEachIndexed {i,name->Text("● $name",color=colors[i%colors.size],style=MaterialTheme.typography.labelMedium)}
+    groups.keys.forEachIndexed {i,name->Text("● $name",color=Color.hsv((groups.getValue(name).first().colorKey.hashCode().toLong().let {kotlin.math.abs(it)}%360).toFloat(),0.45f,0.9f),style=MaterialTheme.typography.labelMedium)}
     if(dots.isNotEmpty()) {
         Row {
             TextButton(onClick={selected=if(selected==null) 0 else (selected!!-1).coerceAtLeast(0)}) {Text(if(selected==null) "Inspect first point" else "Previous point")}
@@ -77,55 +95,21 @@ fun observationSourceLabel(basis: String): String = when(basis) {
 private fun metricScaleLabel(metric: Metric,definition: Metric): String =
     definition.name.takeUnless {it==metric.name} ?: definition.unit.ifBlank {definition.kind}
 
-private data class EquipmentSetup(
-    val sword: String,
-    val glove: String,
-    val lenses: Boolean?,
-    val extras: List<Pair<String,String>>
-) {
-    fun label(): String = buildList {
-        if(sword.isNotBlank()) add("Sword: $sword")
-        if(glove.isNotBlank()) add("Glove: $glove")
-        lenses?.let { add(if(it) "Lenses" else "No lenses") }
-        extras.forEach {(category,value)->add("$category: $value")}
-    }.joinToString(" · ")
+fun revisionLabel(metric: Metric,id: String): String = id.split(" + ").joinToString(" + ") {revision->
+    val known=revision==metric.scale || metric.revisions.any {it.id==revision}
+    if(!known) "Unknown definition ${revision.takeLast(6)}" else metric.atScale(revision).let {"${it.name} ${decimal(it.min)}–${decimal(it.max)} ${it.unit} [${revision.takeLast(6)}]"}
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable private fun EquipmentInsights(bouts: List<Bout>,s: Snapshot) {
-    val setups=bouts.mapNotNull {bout ->
-        val details=if(bout.a==s.me) bout.detailsA else bout.detailsB
-        val extras=details.equipment.filterValues {it.isNotBlank()}.map {(id,value)->
-            (s.settings.equipmentCategories.find {it.id==id}?.name ?: id) to value
-        }.sortedBy {it.first}
-        val setup=EquipmentSetup(details.sword,details.glove,details.lenses,extras)
-        setup.takeIf {it.label().isNotBlank()}?.let {it to bout}
-    }.groupBy({it.first},{it.second})
-        .map { (setup,rows)->setup to statistics(rows,s.me) }
-        .sortedWith(compareByDescending<Pair<EquipmentSetup,FencingStats>> {it.second.bouts}.thenBy {it.first.label()})
-
+    var field by remember {mutableStateOf("Foil")}
     Heading("Equipment cards")
-    if(setups.isEmpty()) {
-        Hint("No bout equipment has been recorded yet.")
-        return
-    }
-    Hint("Each card summarizes bouts with that recorded setup. Comparisons are descriptive, not proof that equipment caused a result.")
-    setups.forEachIndexed {index,(setup,stats)->
-        Panel("Setup ${index+1} · ${setup.label()}") {
-            Hint("${stats.bouts} bouts · ${stats.wins}W / ${stats.losses}L")
-            Hint("Touch share ${stats.touchShare?.let { "${decimal(it*100)}%" } ?: "—"} · win rate ${stats.winRate?.let { "${decimal(it*100)}%" } ?: "—"}")
-        }
-    }
-    if(setups.size>1) {
-        val dots=setups.flatMapIndexed {index,(setup,stats)->
-            buildList {
-                stats.touchShare?.let {add(ChartDot(index+1.0,it*100,"Touch share","Setup ${index+1} · ${setup.label()}: ${decimal(it*100)}% touch share · ${stats.bouts} bouts"))}
-                stats.winRate?.let {add(ChartDot(index+1.0,it*100,"Win rate","Setup ${index+1} · ${setup.label()}: ${decimal(it*100)}% win rate · ${stats.bouts} bouts"))}
-            }
-        }
-        Panel("Performance by equipment setup") {
-            Hint("Each point is a setup card above; compare touch share and win rate. Small samples and different opponents or contexts can affect results.")
-            ObservationChart(dots,"Equipment setup (card number)","Percent",zero=true)
-        }
+    val options=equipmentFields(s)
+    FlowRow(horizontalArrangement=Arrangement.spacedBy(6.dp)) {options.forEach {option->FilterChip(field==option,onClick={field=option},label={Text(s.settings.equipmentCategories.find {it.id==option}?.name ?: option)})}}
+    Hint("Independent component comparisons; opponents and context can differ.")
+    bouts.groupBy {val d=if(it.a==s.me) it.detailsA else it.detailsB;when(field){"Foil"->d.swordId.ifBlank {d.sword};"Glove"->d.gloveId.ifBlank {d.glove};else->equipmentValue(s,d,field)}}.forEach {(_,rows)->
+        val first=rows.first();val name=equipmentValue(s,if(first.a==s.me) first.detailsA else first.detailsB,field)
+        StatsPanel(rows,s.me,"${s.settings.equipmentCategories.find {it.id==field}?.name ?: field} · $name");Hint("${rows.map {it.sessionId}.distinct().size} sessions")
     }
 }
 
@@ -166,9 +150,9 @@ fun screenTimeChartNote(s: Snapshot,now: Instant = Instant.now()): String? {
         val scaleLabel=metricScaleLabel(metric,definition)
         Panel("${measure.label} vs ${metric.name} · $scaleLabel scale") {
             Hint("Scatter plot: each dot pairs one fencing-day measure (Y) with ${metric.name} (X). Color distinguishes the fencing measure and date source.")
-            ObservationChart(rows.map {ChartDot(it.lifeValue,it.performance,"${it.series} · ${observationSourceLabel(it.basis)}",
-                "Fencing ${it.fencingDay}: ${it.series} ${decimal(it.performance)} ${measure.unit} · ${it.bouts} bouts; ${metric.name} ${it.lifeDay}: ${decimal(it.lifeValue)} ${definition.unit} · ${observationSourceLabel(it.basis)} · ${definition.name}")},
-                "${metric.name} (${definition.unit.ifBlank {scaleLabel}})","${measure.label} (${measure.unit})",measure==PerformanceMeasure.ADJUSTED)
+            ObservationChart(rows.map {ChartDot(it.lifeValue,it.performance,"${it.series} · ${revisionLabel(metric,it.revision)} · ${observationSourceLabel(it.basis)}",
+                "Fencing ${it.fencingDay}: ${it.series} ${decimal(it.performance)} ${measure.unit} · ${it.bouts} bouts; ${metric.name} ${it.lifeDay}: ${decimal(it.lifeValue)} ${definition.unit} · ${observationSourceLabel(it.basis)} · ${revisionLabel(metric,it.revision)}",basis=it.basis,colorKey=it.series+it.revision)},
+                "${metric.name} (${definition.unit.ifBlank {scaleLabel}})","${measure.label} (${measure.unit})",measure==PerformanceMeasure.ADJUSTED,xBounds=if(definition.kind=="Rating") definition.min to definition.max else null)
             Hint("${rows.size} paired days · $scaleLabel scale · date sources are color-coded")
             rows.groupBy {it.basis to it.series}.forEach { (sourceSeries,seriesRows)->
                 val c=compare(seriesRows.map {DailyValue(it.fencingDay,it.lifeValue,it.basis,it.scale,"daily",1)},
@@ -182,11 +166,15 @@ fun screenTimeChartNote(s: Snapshot,now: Instant = Instant.now()): String? {
 }
 
 @Composable fun InsightsScreen(s: Snapshot) {
+    val data=remember(s.metrics,s.observations) {insightData(s.metrics,s.observations)}
     var section by remember {mutableStateOf("Fencing")};var from by remember {mutableStateOf("")};var to by remember {mutableStateOf("")}
     var target by remember {mutableStateOf("All")};var context by remember {mutableStateOf("All")};var weapon by remember {mutableStateOf("All")};var opponent by remember {mutableStateOf("")}
     var x by remember {mutableStateOf("mood")};var y by remember {mutableStateOf("stress")};var preceding by remember {mutableStateOf(false)}
+    var combined by remember {mutableStateOf(true)};var excludedScales by remember {mutableStateOf(setOf<String>())};var bases by remember {mutableStateOf(setOf("tracking","calendar"))}
+    fun values(metric: Metric)=compatibleDailyValues(data.observations,metric,combined,data.observations.filter {it.metric==metric.id && "${metric.id}:${it.scale}" !in excludedScales}.map {it.scale}.toSet(),bases)
+    var sessionFilters by remember {mutableStateOf(emptyMap<String,String>())}
     var measure by remember {mutableStateOf(PerformanceMeasure.TOUCH_SHARE)}
-    val numeric=remember(s.metrics) {chartableMetrics(s.metrics)}
+    val numeric=remember(data.metrics) {chartableMetrics(data.metrics)}
     val filter=AnalysisFilter(weapon,target,context)
     val strength by produceState<StrengthAnalysis?>(null,s.bouts,s.sessions,s.fencers,filter) {
         value=null
@@ -197,11 +185,15 @@ fun screenTimeChartNote(s: Snapshot,now: Instant = Instant.now()): String? {
         Heading("Patterns, with context");Chips(listOf("Fencing","Life"),section,{section=it})
         Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {Input("From date",from,{from=it},modifier=Modifier.weight(1f));Input("To date",to,{to=it},modifier=Modifier.weight(1f))}
         if((from.isNotBlank() && !validDay(from)) || (to.isNotBlank() && !validDay(to)) || (from.isNotBlank() && to.isNotBlank() && from>to)) Hint("Enter a valid date range using yyyy-MM-dd.")
+        Chips(listOf("Combined","Separate"),if(combined) "Combined" else "Separate",{combined=it=="Combined"})
+        listOf("tracking","calendar").forEach {basis->Row {Checkbox(basis in bases,{bases=if(it) bases+basis else bases-basis});Text(observationSourceLabel(basis))}}
+        numeric.filter {it.id==x || (section=="Life" && it.id==y)}.forEach {metric->data.observations.filter {it.metric==metric.id}.groupBy {it.scale}.forEach {(scale,events)->val d=metric.atScale(scale);Row {Checkbox("${metric.id}:$scale" !in excludedScales,{excludedScales=if(it) excludedScales-"${metric.id}:$scale" else excludedScales+"${metric.id}:$scale"});Text("${metric.name}: ${d.name} ${d.min}-${d.max} ${d.unit} · ${events.minOf {it.stamp.day}} · ${events.maxOf {it.stamp.day}}")}}}
         if(section=="Fencing") {
             Chips(listOf("All","Foil","Épée","Sabre"),weapon,{weapon=it})
             Chips(listOf("All","5","10","15"),target,{target=it});Chips(listOf("All","Training","Competition"),context,{context=it});Input("Opponent",opponent,{opponent=it})
-            val bouts=remember(s.bouts,s.sessions,filter,from,to,opponent,s.fencers) {
-                analysisBouts(s.bouts,s.sessions,filter).filter {b->b.contains(s.me) && dates(b.stamp.day) && (opponent.isBlank() || s.name(if(b.a==s.me)b.b else b.a).contains(opponent,true))}
+            SessionFilters(s,sessionFilters,{sessionFilters=it})
+            val bouts=remember(s,filter,from,to,opponent,sessionFilters,bases) {
+                analysisBouts(s.bouts,s.sessions,filter).filter {b->b.contains(s.me) && b.origin.dateBasis in bases && matchesSessionFilters(s,b,sessionFilters) && dates(b.stamp.day) && (opponent.isBlank() || s.name(if(b.a==s.me)b.b else b.a).contains(opponent,true))}
             }
             StatsPanel(bouts,s.me)
             val stats=statistics(bouts,s.me)
@@ -227,7 +219,7 @@ fun screenTimeChartNote(s: Snapshot,now: Instant = Instant.now()): String? {
                 if(metric!=null) {
                     ScreenTimeChartHint(s,metric)
                     val points=remember(bouts,measure,strength) {performancePoints(bouts,s.me,measure,strength ?: StrengthAnalysis())}
-                    val life=remember(s.observations,metric) {dailyValues(s.observations,metric)}
+                    val life=values(metric)
                     MatchedChart(matchPerformance(points,life,preceding),metric,measure)
                 }
             }
@@ -239,16 +231,16 @@ fun screenTimeChartNote(s: Snapshot,now: Instant = Instant.now()): String? {
             MetricPicker("Trend",numeric,x,{x=it});val xm=numeric.find {it.id==x}
             if(xm!=null) {
                 ScreenTimeChartHint(s,xm)
-                val xs=dailyValues(s.observations,xm).filter {dates(it.day)}
+                val xs=values(xm).filter {dates(it.day)}
                 if(xs.isEmpty()) Hint("No matching life observations.")
                 xs.groupBy {it.scale}.forEach { (scale,rows) ->
                     val definition=xm.atScale(scale)
                     val scaleLabel=metricScaleLabel(xm,definition)
                     Panel("${xm.name} timeline · $scaleLabel") {
                         Hint("Timeline: each dot is one observed day. Color distinguishes historical calendar dates from tracking-day dates.")
-                        ObservationChart(rows.map {ChartDot(LocalDate.parse(it.day).toEpochDay().toDouble(),it.value,observationSourceLabel(it.basis),
-                            "${it.day}: ${decimal(it.value)} ${definition.unit} · ${it.count} observations · ${observationSourceLabel(it.basis)} · $scaleLabel")},
-                            "Recorded date",definition.unit.ifBlank {scaleLabel},dateAxis=true)
+                        ObservationChart(rows.map {ChartDot(LocalDate.parse(it.day).toEpochDay().toDouble(),it.value,"${revisionLabel(xm,it.revision)} · ${observationSourceLabel(it.basis)}",
+                            "${it.day}: ${decimal(it.value)} ${definition.unit} · ${it.count} observations · ${observationSourceLabel(it.basis)} · ${revisionLabel(xm,it.revision)}",basis=it.basis,trendSeries=it.basis,colorKey=it.revision)},
+                            "Recorded date",definition.unit.ifBlank {scaleLabel},dateAxis=true,yBounds=if(definition.kind=="Rating") definition.min to definition.max else null)
                         Hint("${rows.size} observed days · scale $scaleLabel")
                         rows.groupBy {it.basis}.forEach { (basis,sourceRows)->
                             Hint("${observationSourceLabel(basis)} · ${sourceRows.count {it.scope=="daily"}} daily reviews; ${sourceRows.count {it.scope=="momentary"}} days summarised from events")
@@ -260,7 +252,7 @@ fun screenTimeChartNote(s: Snapshot,now: Instant = Instant.now()): String? {
                 val ym=numeric.find {it.id==y}
                 if(ym!=null) {
                     ScreenTimeChartHint(s,ym)
-                    val ys=dailyValues(s.observations,ym).filter {dates(it.day)}
+                    val ys=values(ym).filter {dates(it.day)}
                     xs.groupBy {it.scale}.forEach { (xscale,a)->ys.groupBy {it.scale}.forEach { (yscale,b)->
                         val xdefinition=xm.atScale(xscale);val ydefinition=ym.atScale(yscale)
                         val xscaleLabel=metricScaleLabel(xm,xdefinition);val yscaleLabel=metricScaleLabel(ym,ydefinition)
@@ -270,12 +262,12 @@ fun screenTimeChartNote(s: Snapshot,now: Instant = Instant.now()): String? {
                         }
                         if(paired.isNotEmpty()) Panel("${xm.name} vs ${ym.name} · $xscaleLabel / $yscaleLabel scales") {
                             Hint("Scatter plot: each dot pairs ${xm.name} (X) with ${ym.name} (Y). Color identifies the date source.")
-                            ObservationChart(paired.map {(first,second)->ChartDot(first.value,second.value,observationSourceLabel(first.basis),
+                            ObservationChart(paired.map {(first,second)->ChartDot(first.value,second.value,"${revisionLabel(xm,first.revision)} / ${revisionLabel(ym,second.revision)} · ${observationSourceLabel(first.basis)}",
                                 "${first.day} ${xm.name}: ${decimal(first.value)} ${xdefinition.unit}; ${second.day} ${ym.name}: ${decimal(second.value)} ${ydefinition.unit} · ${observationSourceLabel(first.basis)}")},
-                                "${xm.name} (${xdefinition.unit.ifBlank {xscaleLabel}})","${ym.name} (${ydefinition.unit.ifBlank {yscaleLabel}})")
-                            val c=compare(a,b,preceding)
+                                "${xm.name} (${xdefinition.unit.ifBlank {xscaleLabel}})","${ym.name} (${ydefinition.unit.ifBlank {yscaleLabel}})",xBounds=if(xdefinition.kind=="Rating") xdefinition.min to xdefinition.max else null,yBounds=if(ydefinition.kind=="Rating") ydefinition.min to ydefinition.max else null)
+                            val correlations=paired.groupBy {it.first.basis}.mapValues {(_,rows)->compare(rows.map {it.first},rows.map {it.second},preceding)}
                             Hint("${paired.size} paired days · $xscaleLabel / $yscaleLabel scales · date sources are color-coded")
-                            if(paired.size>=20 && c.correlation!=null) Text("Descriptive correlation: ${decimal(c.correlation)}") else Hint("Collect at least 20 paired days with varying values before showing a correlation summary.")
+                            correlations.forEach {(basis,c)->if(paired.count {it.first.basis==basis}>=20 && c.correlation!=null) Text("${observationSourceLabel(basis)} correlation: ${decimal(c.correlation)}") else Hint("${observationSourceLabel(basis)}: collect at least 20 paired days with varying values.")}
                         }
                     }}
                 }

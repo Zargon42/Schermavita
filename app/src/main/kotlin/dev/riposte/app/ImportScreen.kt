@@ -39,7 +39,7 @@ fun mergeHistory(current: Snapshot,imported: Snapshot): Snapshot {
         val existing=if(p.isMe) people.first {it.isMe} else people.find {it.id==p.id} ?: if(p.identityKnown) people.filter {!it.isMe && it.identityKnown && normalizedName(it.name)==normalizedName(p.name)}.singleOrNull() else null
         mapping[p.id]=existing?.id ?: p.id;if(existing==null) people.add(p)
     }
-    return current.copy(fencers=people,sessions=(current.sessions+imported.sessions).distinctBy {it.id},
+    return current.copy(equipmentProfiles=(current.equipmentProfiles+imported.equipmentProfiles.map {it.copy(owner=mapping.getValue(it.owner))}).distinctBy {it.id},reflectionQuestions=(current.reflectionQuestions+imported.reflectionQuestions).distinctBy {it.id},lessons=(current.lessons+imported.lessons).distinctBy {it.id},fencers=people,sessions=(current.sessions+imported.sessions).distinctBy {it.id},
         bouts=(current.bouts+imported.bouts.map {it.copy(a=mapping.getValue(it.a),b=mapping.getValue(it.b))}).distinctBy {it.id},
         metrics=(current.metrics+imported.metrics).distinctBy {it.id},observations=(current.observations+imported.observations).distinctBy {it.id},
         batches=(current.batches+imported.batches).distinctBy {it.id},attachments=(current.attachments+imported.attachments).distinctBy {it.id})

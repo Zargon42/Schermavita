@@ -68,7 +68,7 @@ fun opponentStrength(bouts: List<Bout>, sessions: List<Session>, fencers: List<F
 enum class PerformanceMeasure(val label: String, val unit: String) {
     TOUCH_SHARE("Touch share","%"), POINTS("Points for / against","points"),
     RESULTS("Wins / losses","bouts"), WIN_RATE("Win rate","%"),
-    EXECUTION("Self-evaluation","/ 5"), ADJUSTED("Opponent-adjusted touch share","percentage points")
+    PROCESS("Plan/process execution","/ 5"), EXECUTION("Self-evaluation","/ 5"), ADJUSTED("Opponent-adjusted touch share","percentage points")
 }
 data class PerformancePoint(val day: String, val basis: String, val value: Double,
     val count: Int, val series: String, val unit: String, val excluded: Int = 0)
@@ -87,6 +87,7 @@ fun performancePoints(bouts: List<Bout>, me: String, measure: PerformanceMeasure
             PerformanceMeasure.POINTS -> if(scored==0) emptyList() else listOfNotNull(point(stats.touchesFor.toDouble(),scored,"Points for"),point(stats.touchesAgainst.toDouble(),scored,"Points against"))
             PerformanceMeasure.RESULTS -> if(stats.wins+stats.losses==0) emptyList() else listOfNotNull(point(stats.wins.toDouble(),stats.wins+stats.losses,"Wins"),point(stats.losses.toDouble(),stats.wins+stats.losses,"Losses"))
             PerformanceMeasure.WIN_RATE -> listOfNotNull(point(stats.winRate?.times(100),stats.wins+stats.losses))
+            PerformanceMeasure.PROCESS -> { val ratings=rows.mapNotNull { (if(it.a==me) it.detailsA else it.detailsB).process }; listOfNotNull(point(ratings.takeIf {it.isNotEmpty()}?.average(),ratings.size)) }
             PerformanceMeasure.EXECUTION -> listOfNotNull(point(stats.execution,stats.rated))
             PerformanceMeasure.ADJUSTED -> {
                 val eligible=rows.mapNotNull {strength.comparisons[it.id]}.filterNot {it.provisional}
@@ -97,11 +98,11 @@ fun performancePoints(bouts: List<Bout>, me: String, measure: PerformanceMeasure
     }
 
 data class MatchedSample(val fencingDay: String, val lifeDay: String, val basis: String,
-    val scale: String, val series: String, val lifeValue: Double, val performance: Double, val bouts: Int)
+    val scale: String, val series: String, val lifeValue: Double, val performance: Double, val bouts: Int,val revision: String = scale)
 fun matchPerformance(points: List<PerformancePoint>, life: List<DailyValue>, preceding: Boolean): List<MatchedSample> {
     val indexed=life.groupBy {it.day to it.basis}
     return points.flatMap {p ->
         val day=LocalDate.parse(p.day).minusDays(if(preceding) 1 else 0).toString()
-        indexed[day to p.basis].orEmpty().map {v -> MatchedSample(p.day,day,p.basis,v.scale,p.series,v.value,p.value,p.count)}
+        indexed[day to p.basis].orEmpty().map {v -> MatchedSample(p.day,day,p.basis,v.scale,p.series,v.value,p.value,p.count,v.revision)}
     }
 }

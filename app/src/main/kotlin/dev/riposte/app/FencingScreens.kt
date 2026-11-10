@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import dev.riposte.core.*
 import dev.riposte.fencing.*
 import dev.riposte.insights.*
+import dev.riposte.life.rollingMean
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.*
@@ -25,6 +26,9 @@ import java.time.*
             Stat("Bouts",stats.bouts.toString()); Stat("Win rate",stats.winRate?.let { "${(it*100).toInt()}%" } ?: "—"); Stat("Touch share",stats.touchShare?.let { "${(it*100).toInt()}%" } ?: "—")
         }
         Hint("${stats.wins} wins · ${stats.losses} losses · ${stats.touchesFor}–${stats.touchesAgainst} touches")
+        val process=bouts.filter {!it.deleted && it.contains(person)}.mapNotNull {(if(it.a==person) it.detailsA else it.detailsB).process}
+        if(process.isNotEmpty()) Hint("Plan/process execution "+decimal(process.average())+" / 5 · "+process.size+" rated bouts")
+        bouts.filter {!it.deleted && it.contains(person)}.flatMap {(if(it.a==person) it.detailsA else it.detailsB).goalAnswers}.groupBy {it.id to it.text}.forEach {(goal,answers)->val known=answers.filter {it.applied!=null};if(known.isNotEmpty()) Hint("${goal.second}: ${known.count {it.applied==true}}/${known.size} applied")}
         if(stats.rated>0) Hint("Execution ${decimal(stats.execution)} / 5 · ${stats.rated} rated bouts")
         Hint("Recorded results only. Win rate excludes unresolved results and draws.")
     }
@@ -41,6 +45,11 @@ import java.time.*
     } }
 }
 @Composable fun FencingScreen(repo: AppRepository,s: Snapshot,run: (suspend ()->Unit)->Unit,onSession: (Session?)->Unit,onBout: (Bout)->Unit,onAdd: ()->Unit,onPerson: (String)->Unit) {
+    var area by remember {mutableStateOf("")};var review by remember {mutableStateOf<Session?>(null)};var closing by remember {mutableStateOf(true)}
+    if(review!=null) {ReflectionForm(repo,s,review!!,run,{review=null},closing);return}
+    if(area=="Equipment") {EquipmentScreen(repo,s,run,{area=""});return}
+    if(area=="Questions") {QuestionEditor(repo,s,run,{area=""});return}
+    if(area=="Journal") {SessionJournal(s,{area=""},{review=it;closing=false});return}
     var search by remember { mutableStateOf("") }; var sessionSearch by remember { mutableStateOf("") }
     val strength=rememberFencerStrength(s)
     var ratingWeapon by remember {mutableStateOf(s.settings.defaultWeapon)}
@@ -50,13 +59,16 @@ import java.time.*
     val active=s.sessions.find { it.id==s.settings.activeSession }
     ScrollPage {
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) { Heading("On the piste"); TextButton(onClick={ onSession(null) }) { Text("New session") } }
+        Row {TextButton(onClick={area="Equipment"}) {Text("Equipment")};TextButton(onClick={area="Journal"}) {Text("Session journal")}}
+        TextButton(onClick={area="Questions"}) {Text("Reflection questions")}
         if(active!=null) Panel(active.name) { Text("${active.stamp.day} · ${active.context} · ${active.weapon}"); Hint("${active.venue}  ·  ${active.sword.ifBlank { "No sword set" }} / ${active.glove.ifBlank { "No glove set" }}")
             s.lessons.filter { it.sessionId==active.id }.forEach { lesson->
                 Hint("Lesson · ${lesson.focus}${lesson.coach.takeIf {it.isNotBlank()}?.let {" · Coach: $it"}.orEmpty()}")
                 if(lesson.notes.isNotBlank()) Hint(lesson.notes)
             }
             Button(onClick=onAdd,modifier=Modifier.fillMaxWidth()) { Text("Add bout") }; TextButton(onClick={onSession(active)}) { Text("Session details & equipment") }
-            TextButton(onClick={run {repo.closeSession(active.id)}}) {Text("Close session")}
+            active.sessionGoals().forEach {Text("Goal: ${it.text}")}
+            TextButton(onClick={review=active;closing=true}) {Text("Close session")}
         }
         else Panel("Start a session") { Text("No active session. Set the details once, then add bouts as you go."); Button(onClick={onSession(null)}) { Text("New session") }; Hint("Tap a saved session below to resume it.") }
         if(active!=null) { val bouts=s.bouts.filter { !it.deleted && it.sessionId==active.id }; StatsPanel(bouts,s.me,"This session · your bouts"); bouts.sortedByDescending { it.stamp.occurredAt }.take(30).forEach { b->BoutRow(s,b) { onBout(b) } } }
@@ -82,7 +94,7 @@ import java.time.*
                     }})
                     if(history.isNotEmpty()) {
                         Hint("Rating history · ${history.first().day} to ${history.last().day}")
-                        if(history.size>1) RatingSparkline(history)
+                        if(history.size>1) RatingSparkline(history,compact=false)
                     }
                 }
             }
@@ -110,24 +122,21 @@ private fun ratingLabel(weapon: String,evidence: RatingEvidence?,loading: Boolea
         evidence==null -> "Not rated"
         else -> "${decimal(evidence.rating)} · ${evidence.bouts} eligible "+(if(evidence.bouts==1) "bout" else "bouts")+if(evidence.bouts<5) " · Provisional" else ""
     }
-@Composable private fun RatingSparkline(history: List<RatingSnapshot>) {
-    val values=history.map {it.evidence.rating}
-    val low=values.minOrNull() ?: return
-    val high=values.maxOrNull() ?: return
-    val color=MaterialTheme.colorScheme.primary
-    val description=history.joinToString("; ") {"${it.day}: ${decimal(it.evidence.rating)}"}
-    Canvas(Modifier.fillMaxWidth().height(42.dp).semantics {contentDescription="Score rating history: $description"}) {
-        val padding=6f
-        val range=(high-low).takeIf {it>0} ?: 1.0
-        val points=values.mapIndexed {index,value->
-            Offset(
-                padding+(size.width-2*padding)*index/(values.lastIndex.coerceAtLeast(1)),
-                size.height-padding-((value-low)/range).toFloat()*(size.height-2*padding)
-            )
-        }
-        points.zipWithNext().forEach {(start,end)->drawLine(color,start,end,strokeWidth=3f)}
-        points.forEach {drawCircle(color,4f,it)}
+@Composable private fun RatingSparkline(history: List<RatingSnapshot>,compact: Boolean=true) {
+    if(!compact) {ObservationChart(history.map {ChartDot(LocalDate.parse(it.day).toEpochDay().toDouble(),it.evidence.rating,"Score rating",it.day)},"Recorded date","Score rating",dateAxis=true);return}
+    var window by remember {mutableStateOf("Off")};var menu by remember {mutableStateOf(false)}
+    Box {TextButton(onClick={menu=true}) {Text("Trend: $window")};DropdownMenu(menu,{menu=false}) {listOf("Off","7","14","28").forEach {option->DropdownMenuItem(text={Text(if(option=="Off") option else "$option days")},onClick={window=option;menu=false})}}}
+    val raw=history.map {LocalDate.parse(it.day).toEpochDay().toDouble() to it.evidence.rating}
+    if(raw.isEmpty()) return
+    val smooth=if(window=="Off") emptyList() else rollingMean(raw,window.toInt())
+    val color=MaterialTheme.colorScheme.primary;val trendColor=MaterialTheme.colorScheme.tertiary
+    val low=raw.minOf {it.second};val high=raw.maxOf {it.second};val first=raw.minOf {it.first};val last=raw.maxOf {it.first}
+    Canvas(Modifier.fillMaxWidth().height(42.dp).semantics {contentDescription="Score rating history; trend $window"}) {
+        fun point(day: Double,value: Double)=Offset(6f+((day-first)/(last-first).coerceAtLeast(1.0)*(size.width-12)).toFloat(),size.height-6f-((value-low)/(high-low).coerceAtLeast(1.0)*(size.height-12)).toFloat())
+        raw.zipWithNext().forEach {(a,b)->drawLine(color,point(a.first,a.second),point(b.first,b.second),strokeWidth=2.dp.toPx())}
+        smooth.zipWithNext().filter {it.second.day-it.first.day<=window.toInt()}.forEach {(a,b)->drawLine(trendColor,point(a.day,a.value),point(b.day,b.value),strokeWidth=3.dp.toPx())}
     }
+    smooth.lastOrNull()?.let {Hint("${it.count} observed days in trailing $window days")}
 }
 @Composable fun PersonInput(label: String,s: Snapshot,name: String,onName: (String)->Unit,selected: String?,onSelect: (Fencer)->Unit,exclude: String?=null) {
     Input(label,name,onName)
@@ -149,11 +158,12 @@ private fun ratingLabel(weapon: String,evidence: RatingEvidence?,loading: Boolea
     var name by remember { mutableStateOf(existing?.name ?: "Fencing") }; var context by remember { mutableStateOf(existing?.context ?: "Training") }
     var weapon by remember { mutableStateOf(existing?.weapon ?: "Foil") }; var venue by remember { mutableStateOf(existing?.venue.orEmpty()) }
     var target by remember { mutableStateOf((existing?.target ?: 15).toString()) }; var sword by remember { mutableStateOf(existing?.sword.orEmpty()) }; var glove by remember { mutableStateOf(existing?.glove.orEmpty()) }
+    var goals by remember {mutableStateOf(existing?.sessionGoals().orEmpty())};var swordId by remember {mutableStateOf(existing?.swordId.orEmpty())};var gloveId by remember {mutableStateOf(existing?.gloveId.orEmpty())}
     var focus by remember { mutableStateOf(existing?.focus.orEmpty()) }; var notes by remember { mutableStateOf(existing?.notes.orEmpty()) }
     var time by remember { mutableStateOf(localTime(initial)) }; var day by remember { mutableStateOf(initial.day) }; var error by remember { mutableStateOf("") }
     Form(if(existing==null) "New session" else "Session details",onClose,onSave={ try {
         require(name.isNotBlank()); LocalDate.parse(day); val instant=if(time.isBlank() && existing?.origin?.precision!="instant") "" else parsedTime(time,initial.zone).toString(); val number=target.toInt(); require(number in 1..999)
-        onSave(Session(id,name,initial.copy(occurredAt=instant,day=day,dayOverride=true),context,venue,weapon,number,sword,glove,focus,notes,existing?.origin ?: Origin(),preparation,lenses,equipment),categories,lessons)
+        onSave(Session(id,name,initial.copy(occurredAt=instant,day=day,dayOverride=true),context,venue,weapon,number,sword,glove,focus,notes,existing?.origin ?: Origin(),preparation,lenses,equipment,swordId,gloveId,goals.filter {it.text.isNotBlank()}.ifEmpty {if(existing==null && focus.isNotBlank()) listOf(SessionGoal("legacy:$id",focus)) else emptyList()},existing?.reflection,goalsConfigured=true),categories,lessons)
     } catch(e: Exception) { error="Check the name, date, time, and target score." } }) {
         if(error.isNotBlank()) Text(error,color=MaterialTheme.colorScheme.error)
         Input("Session name",name,{name=it}); Chips(listOf("Training","Competition","Camp","Other"),context,{context=it}); Input("Venue",venue,{venue=it})
@@ -166,7 +176,7 @@ private fun ratingLabel(weapon: String,evidence: RatingEvidence?,loading: Boolea
             if(answer!=null && definition.id!=current.id) Hint("Uses the scale saved with this session.")
         }
         Heading("Equipment")
-        Input("Sword",sword,{sword=it}); Input("Glove",glove,{glove=it})
+        Input("Sword",sword,{sword=it;swordId=""});EquipmentPicker(s,s.me,"Foil",swordId,{sword=it.name;swordId=it.id}); Input("Glove",glove,{glove=it;gloveId=""});EquipmentPicker(s,s.me,"Glove",gloveId,{glove=it.name;gloveId=it.id})
         LensesInput(lenses,{lenses=it});EquipmentFields(categories,equipment,{equipment=it})
         TextButton(onClick={manageCategories=true}) {Text("Manage equipment categories")}
         Heading("Lessons")
@@ -196,15 +206,18 @@ private fun ratingLabel(weapon: String,evidence: RatingEvidence?,loading: Boolea
                 }
             }
         } else OutlinedButton(onClick={addingLesson=true;editingLesson=null;lessonCoach="";lessonFocus="";lessonNotes="";lessonError=""},modifier=Modifier.fillMaxWidth()) {Text("Add lesson")}
-        Input("Tactical focus",focus,{focus=it}); Input("Notes",notes,{notes=it},lines=3)
+        Input("Tactical focus",focus,{focus=it});
+        goals.forEach {goal->Input("Session goal",goal.text,{value->goals=goals.map {if(it.id==goal.id) it.copy(text=value) else it}});TextButton(onClick={goals=goals.filterNot {it.id==goal.id}}) {Text("Remove goal")}}
+        TextButton(onClick={goals=goals+SessionGoal(text="")}) {Text("Add goal")}; Input("Notes",notes,{notes=it},lines=3)
         Input("Started · yyyy-MM-dd HH:mm",time,{time=it}); Input("Tracking day · yyyy-MM-dd",day,{day=it})
         Hint("${initial.zone}. Changes to equipment and target apply to future bouts. Existing bouts keep their saved details and day.")
     }
     if(manageCategories) CategoryForm(categories,{manageCategories=false},{categories=it;manageCategories=false})
 }
-@Composable fun DetailsEditor(title: String,d: ParticipantDetails,tags: List<String>,categories: List<EquipmentCategory>,onChange: (ParticipantDetails)->Unit) {
+@Composable fun DetailsEditor(title: String,d: ParticipantDetails,tags: List<String>,categories: List<EquipmentCategory>,onChange: (ParticipantDetails)->Unit,snapshot: Snapshot?=null,owner: String="") {
     Panel(title) {
-        Input("Sword",d.sword,{onChange(d.copy(sword=it))}); Input("Glove",d.glove,{onChange(d.copy(glove=it))})
+        Input("Sword",d.sword,{onChange(d.copy(sword=it,swordId=""))}); Input("Glove",d.glove,{onChange(d.copy(glove=it,gloveId=""))})
+        snapshot?.let {EquipmentPicker(it,owner,"Foil",d.swordId,{p->onChange(d.copy(sword=p.name,swordId=p.id))});EquipmentPicker(it,owner,"Glove",d.gloveId,{p->onChange(d.copy(glove=p.name,gloveId=p.id))})}
         LensesInput(d.lenses,{onChange(d.copy(lenses=it))});EquipmentFields(categories,d.equipment,{onChange(d.copy(equipment=it))})
         Text("Execution · ${decimal(d.rating)} / 5")
         Slider(d.rating?.toFloat() ?: 2.5f,{onChange(d.copy(rating=(kotlin.math.round(it*2)/2).toDouble()))},valueRange=0f..5f,steps=9)
@@ -236,10 +249,12 @@ private fun ratingLabel(weapon: String,evidence: RatingEvidence?,loading: Boolea
         val a=resolvePerson(s,aname,aid); val b=resolvePerson(s,bname,bid); LocalDate.parse(day)
         val actual=if(time==localTime(initial)) initial.occurredAt else if(time.isBlank() && existing!=null && existing.origin.precision!="instant") "" else parsedTime(time,initial.zone).toString()
         val targetNumber=target.toIntOrNull();require(targetNumber!=null || existing!=null && target.isBlank()) {"Enter a valid target score."}
-        val bout=Bout(id,sessionId,a.id,b.id,scoreA.toIntOrNull(),scoreB.toIntOrNull(),outcome,status,targetNumber,initial.copy(occurredAt=actual,day=day,dayOverride=true),da,db,round,existing?.order ?: s.bouts.count { it.sessionId==sessionId }+1,notes,existing?.origin ?: Origin(),existing?.links.orEmpty())
+        val bout=Bout(id,sessionId,a.id,b.id,scoreA.toIntOrNull(),scoreB.toIntOrNull(),outcome,status,targetNumber,initial.copy(occurredAt=actual,day=day,dayOverride=true),if(a.id==s.me) da.withGoalSnapshots(session.sessionGoals()) else da,if(b.id==s.me) db.withGoalSnapshots(session.sessionGoals()) else db,round,existing?.order ?: s.bouts.count { it.sessionId==sessionId }+1,notes,existing?.origin ?: Origin(),existing?.links.orEmpty())
         bout.validate(); onSave(bout,listOf(a,b))
     } catch(e: Exception) { error=e.message ?: "Check the bout details." }; Unit }
     Form(if(existing==null) "Add bout" else "Edit bout",onClose,save) {
+        session.sessionGoals().forEach {Text("Goal: ${it.text}")}
+        if(aid==s.me) ProcessEditor(da,session.sessionGoals(),{da=it}) else if(bid==s.me) ProcessEditor(db,session.sessionGoals(),{db=it})
         Hint("${session.name} · ${session.stamp.day} · ${session.weapon}")
         if(error.isNotBlank()) Text(error,color=MaterialTheme.colorScheme.error)
         Chips(listOf("My bout","Other fencers"),if(other) "Other fencers" else "My bout",{ other=it=="Other fencers"; aid=if(other) null else s.me; aname=if(other) "" else s.name(s.me) })
@@ -253,7 +268,7 @@ private fun ratingLabel(weapon: String,evidence: RatingEvidence?,loading: Boolea
             Chips(listOf("5","10","15"),target,{target=it}); Input("Target score",target,{target=it},true)
             Chips(listOf("Finished","Unfinished"),status,{status=it}); Hint("Outcome: auto uses the scores; select A or B for a priority decision.")
             Chips(listOf("auto","A","B","Draw","Unknown"),outcome,{outcome=it})
-            DetailsEditor(aname.ifBlank { "Fencer A" },da,s.settings.tacticalTags,s.settings.equipmentCategories,{da=it}); if(other || existing?.detailsB!=null && existing.detailsB!=ParticipantDetails()) DetailsEditor(bname.ifBlank { "Fencer B" },db,s.settings.tacticalTags,s.settings.equipmentCategories,{db=it})
+            DetailsEditor(aname.ifBlank { "Fencer A" },da,s.settings.tacticalTags,s.settings.equipmentCategories,{da=it},s,aid.orEmpty()); if(other || existing?.detailsB!=null && existing.detailsB!=ParticipantDetails()) DetailsEditor(bname.ifBlank { "Fencer B" },db,s.settings.tacticalTags,s.settings.equipmentCategories,{db=it},s,bid.orEmpty())
             Input("Round / poule",round,{round=it}); Input("Notes",notes,{notes=it},lines=3); Input("Occurred · yyyy-MM-dd HH:mm",time,{time=it}); Input("Tracking day · yyyy-MM-dd",day,{day=it})
             Input("Move to session · search",sessionSearch,{sessionSearch=it})
             s.sessions.filter { it.name.contains(sessionSearch,true) || it.stamp.day.contains(sessionSearch) }.sortedByDescending { it.stamp.day }.take(6).forEach { item -> FilterChip(item.id==sessionId,onClick={sessionId=item.id;day=item.stamp.day},label={Text("${item.name} · ${item.stamp.day}")}) }

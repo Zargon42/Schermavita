@@ -23,6 +23,8 @@ Screenshot provenance and the fixture are documented in [the screenshot notes](d
 - **Review imported results:** CSV/XLSX tables and on-device image/PDF OCR, followed by editable review, duplicate handling and undo. Missing scores stay unknown.
 - **Explore recorded performance:** touch share, win/loss measures, self-evaluation, local fencer ratings and comparisons with daily metrics. Points can be inspected by date and sample count.
 - **Control integrations and exports:** opt-in steps/sleep reads, optional unlocked-screen-time totals, encrypted backups and CSV exports.
+- **Review goals and reflections:** a separate bout process rating, per-goal application answers, reusable session questions and a searchable session journal.
+- **Compare individual equipment:** foil/glove profiles, duplicate merging, component properties and session filters. Compatible tracker revisions share charts with optional 7/14/28-day rolling means.
 
 ## Engineering decisions worth inspecting
 
@@ -68,6 +70,10 @@ To explore the UI, create a session under **Fencing**, add a fictional opponent 
 
 ## Verification
 
+Version **0.7.1 (code 11)** was validated on **10 November 2026**: all **65 unit tests** and **18 emulator tests** passed, including private-history checks. Lint reported no errors. The guarded build and emulator upgrade checks passed; the release uses the existing application ID and signing key. Historical Mood now joins compatible Mood (Happiness) charts, and chart markers are smaller. See [validation details](VALIDATION.md) and the [updated user guide](docs/USER_GUIDE.md).
+
+The following records the earlier source export's validation:
+
 The application source in this export was validated on **25 October 2026**:
 
 - **53 unit tests passed**, with zero failures, errors or skips.
@@ -81,7 +87,7 @@ Two retained tests use a separately supplied private history fixture. They skip 
 
 ## Limits and project status
 
-This is a personal project and a reviewed source snapshot, version **0.6.2**. Earlier development history is retained privately to protect private test inputs. Screenshots are demonstrations, not evidence of live Health Connect synchronization.
+This is a personal project, version **0.7.1**. Earlier development history is retained privately to protect private test inputs. Screenshots are demonstrations, not evidence of live Health Connect synchronization.
 
 Fencer ratings and correlations are descriptive estimates from recorded data, not official rankings or causal findings. Missing observations are not filled. Physical-device Health Connect behavior, OEM background scheduling, handwriting accuracy and real entry speed still need hands-on verification.
 

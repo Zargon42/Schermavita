@@ -74,7 +74,7 @@ class InsightsDeviceTest {
         compose.onNodeWithText("Fencing performance vs life metric").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Opponent baselines").assertDoesNotExist()
         compose.onNodeWithText("Equipment cards").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("Performance by equipment setup").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Blade type").performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("Life",substring=false).performScrollTo().performClick()
         compose.onNodeWithText("Trend: Screen time").assertExists()
         compose.onNodeWithText("7 observed days",substring=true).performScrollTo().assertIsDisplayed()
