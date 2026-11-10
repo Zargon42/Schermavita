@@ -48,7 +48,13 @@ import java.time.*
         }
         Panel("Manual recovery scores") {
             Hint("Readiness and sleep scores are not imported from Health Connect. Add optional manual 0–100 trackers.")
-            Button(onClick={run {repo.change {current->current.copy(metrics=(current.metrics+listOf(dev.riposte.life.Metric(id="manual_readiness",name="Readiness (manual)",kind="Number",min=0.0,max=100.0,scale="score-0-100"),dev.riposte.life.Metric(id="manual_sleep_score",name="Sleep score (manual)",kind="Number",min=0.0,max=100.0,scale="score-0-100"))).distinctBy {it.id})}}}) {Text("Add manual score trackers")}
+            val scoreIds=setOf("manual_readiness","manual_sleep_score")
+            val scoresAdded=s.metrics.map {it.id}.containsAll(scoreIds)
+            Button(enabled=!scoresAdded,onClick={run {repo.change {current->current.copy(metrics=(current.metrics+listOf(dev.riposte.life.Metric(id="manual_readiness",name="Readiness (manual)",kind="Number",min=0.0,max=100.0,scale="score-0-100"),dev.riposte.life.Metric(id="manual_sleep_score",name="Sleep score (manual)",kind="Number",min=0.0,max=100.0,scale="score-0-100"))).distinctBy {it.id})}}}) {Text(if(scoresAdded) "Manual score trackers added" else "Add manual score trackers")}
+            if(scoresAdded) {
+                Hint("Readiness and Sleep score trackers are saved. Enter scores in Today > Quick entry.")
+                if(s.metrics.any {it.id in scoreIds && it.hidden}) Hint("A score tracker is hidden. Show it in Configure trackers to use Quick entry.")
+            }
         }
         Panel("Screen time") {
             Text(s.settings.screenTimeStatus)
