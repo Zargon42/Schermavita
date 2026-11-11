@@ -29,7 +29,7 @@ class FencerRatingsDeviceTest {
         compose.onNodeWithText("Fencing",useUnmergedTree=true).performClick()
         compose.waitUntil(10000) {compose.onAllNodesWithText("Sort fencers: Most bouts").fetchSemanticsNodes().isNotEmpty()}
         compose.waitUntil(10000) {compose.onAllNodesWithText("Foil score rating:",substring=true).fetchSemanticsNodes().isNotEmpty()}
-        compose.onAllNodesWithText("Rating history · 2026-10-01 to 2026-10-02",substring=true).assertCountEquals(2)
+        compose.onAllNodesWithText("Rating history · 2026-10-01 to 2026-10-02",substring=true).assertCountEquals(0)
         fun sort(current: String,next: String) {
             compose.onNodeWithText("Sort fencers: $current").performScrollTo().performClick()
             compose.onNode(hasText(next) and hasClickAction()).performClick()
@@ -51,5 +51,6 @@ class FencerRatingsDeviceTest {
         compose.waitUntil(10000) {compose.onAllNodesWithText("Épée score rating: 1484 · 1 eligible bout · Provisional").fetchSemanticsNodes().isNotEmpty()}
         compose.onNodeWithText("Épée score rating: 1484 · 1 eligible bout · Provisional").assertExists()
         compose.onNodeWithText("Sabre score rating: Not rated").assertExists()
+        compose.onAllNodesWithText("Month",substring=false).onFirst().performScrollTo().assertIsDisplayed()
     }
 }

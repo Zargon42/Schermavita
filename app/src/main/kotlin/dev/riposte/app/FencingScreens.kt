@@ -85,17 +85,12 @@ import java.time.*
         Hint("Latest score ratings estimate strength from all recorded results in each weapon. Provisional until 5 eligible bouts; unrated fencers sort last by rating.")
         val people=rankedFencers(s.fencers,s.bouts,strength ?: StrengthAnalysis(),ratingWeapon,order,search)
         people.take(shown).forEach { row-> val f=row.fencer
-            val history=strength?.ratingHistory?.get(ratingWeapon to f.id).orEmpty()
             Card(Modifier.fillMaxWidth().clickable {onPerson(f.id)}) {
                 Column {
                     ListItem(headlineContent={Text(f.name)},supportingContent={Column {
                         Text("${f.club.ifBlank { "Fencer profile" }} · ${row.bouts} bouts")
                         Text(ratingLabel(ratingWeapon,row.evidence,strength==null))
                     }})
-                    if(history.isNotEmpty()) {
-                        Hint("Rating history · ${history.first().day} to ${history.last().day}")
-                        if(history.size>1) RatingSparkline(history,compact=false)
-                    }
                 }
             }
         }
@@ -122,21 +117,8 @@ private fun ratingLabel(weapon: String,evidence: RatingEvidence?,loading: Boolea
         evidence==null -> "Not rated"
         else -> "${decimal(evidence.rating)} · ${evidence.bouts} eligible "+(if(evidence.bouts==1) "bout" else "bouts")+if(evidence.bouts<5) " · Provisional" else ""
     }
-@Composable private fun RatingSparkline(history: List<RatingSnapshot>,compact: Boolean=true) {
-    if(!compact) {ObservationChart(history.map {ChartDot(LocalDate.parse(it.day).toEpochDay().toDouble(),it.evidence.rating,"Score rating",it.day)},"Recorded date","Score rating",dateAxis=true);return}
-    var window by remember {mutableStateOf("Off")};var menu by remember {mutableStateOf(false)}
-    Box {TextButton(onClick={menu=true}) {Text("Trend: $window")};DropdownMenu(menu,{menu=false}) {listOf("Off","7","14","28").forEach {option->DropdownMenuItem(text={Text(if(option=="Off") option else "$option days")},onClick={window=option;menu=false})}}}
-    val raw=history.map {LocalDate.parse(it.day).toEpochDay().toDouble() to it.evidence.rating}
-    if(raw.isEmpty()) return
-    val smooth=if(window=="Off") emptyList() else rollingMean(raw,window.toInt())
-    val color=MaterialTheme.colorScheme.primary;val trendColor=MaterialTheme.colorScheme.tertiary
-    val low=raw.minOf {it.second};val high=raw.maxOf {it.second};val first=raw.minOf {it.first};val last=raw.maxOf {it.first}
-    Canvas(Modifier.fillMaxWidth().height(42.dp).semantics {contentDescription="Score rating history; trend $window"}) {
-        fun point(day: Double,value: Double)=Offset(6f+((day-first)/(last-first).coerceAtLeast(1.0)*(size.width-12)).toFloat(),size.height-6f-((value-low)/(high-low).coerceAtLeast(1.0)*(size.height-12)).toFloat())
-        raw.zipWithNext().forEach {(a,b)->drawLine(color,point(a.first,a.second),point(b.first,b.second),strokeWidth=2.dp.toPx())}
-        smooth.zipWithNext().filter {it.second.day-it.first.day<=window.toInt()}.forEach {(a,b)->drawLine(trendColor,point(a.day,a.value),point(b.day,b.value),strokeWidth=3.dp.toPx())}
-    }
-    smooth.lastOrNull()?.let {Hint("${it.count} observed days in trailing $window days")}
+@Composable private fun RatingSparkline(history: List<RatingSnapshot>) {
+    ObservationChart(history.map {ChartDot(LocalDate.parse(it.day).toEpochDay().toDouble(),it.evidence.rating,"Score rating",it.day)},"Recorded date","Score rating",dateAxis=true)
 }
 @Composable fun PersonInput(label: String,s: Snapshot,name: String,onName: (String)->Unit,selected: String?,onSelect: (Fencer)->Unit,exclude: String?=null) {
     Input(label,name,onName)
@@ -254,7 +236,6 @@ private fun ratingLabel(weapon: String,evidence: RatingEvidence?,loading: Boolea
     } catch(e: Exception) { error=e.message ?: "Check the bout details." }; Unit }
     Form(if(existing==null) "Add bout" else "Edit bout",onClose,save) {
         session.sessionGoals().forEach {Text("Goal: ${it.text}")}
-        if(aid==s.me) ProcessEditor(da,session.sessionGoals(),{da=it}) else if(bid==s.me) ProcessEditor(db,session.sessionGoals(),{db=it})
         Hint("${session.name} · ${session.stamp.day} · ${session.weapon}")
         if(error.isNotBlank()) Text(error,color=MaterialTheme.colorScheme.error)
         Chips(listOf("My bout","Other fencers"),if(other) "Other fencers" else "My bout",{ other=it=="Other fencers"; aid=if(other) null else s.me; aname=if(other) "" else s.name(s.me) })
@@ -262,10 +243,12 @@ private fun ratingLabel(weapon: String,evidence: RatingEvidence?,loading: Boolea
         PersonInput(if(other) "Fencer B" else "Opponent",s,bname,{bname=it;bid=null},bid,{bid=it.id;bname=it.name},aid)
         Row(horizontalArrangement=Arrangement.spacedBy(12.dp)) { Input(if(other) "A score" else "Your score",scoreA,{scoreA=it},true,modifier=Modifier.weight(1f)); Input(if(other) "B score" else "Opponent score",scoreB,{scoreB=it},true,modifier=Modifier.weight(1f)) }
         Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) { OutlinedButton(onClick={scoreA=target}) {Text(if(other) "A to target" else "Won to target")}; OutlinedButton(onClick={scoreB=target}) {Text(if(other) "B to target" else "Lost to target")} }
+        Chips(listOf("5","10","15"),target,{target=it})
         Button(save,Modifier.fillMaxWidth()) { Text("Save bout") }
         TextButton(onClick={detail=!detail}) { Text(if(detail) "Hide extra details" else "Rating, tactics & more") }
         if(detail) {
-            Chips(listOf("5","10","15"),target,{target=it}); Input("Target score",target,{target=it},true)
+            if(aid==s.me) ProcessEditor(da,session.sessionGoals(),{da=it}) else if(bid==s.me) ProcessEditor(db,session.sessionGoals(),{db=it})
+            Input("Target score",target,{target=it},true)
             Chips(listOf("Finished","Unfinished"),status,{status=it}); Hint("Outcome: auto uses the scores; select A or B for a priority decision.")
             Chips(listOf("auto","A","B","Draw","Unknown"),outcome,{outcome=it})
             DetailsEditor(aname.ifBlank { "Fencer A" },da,s.settings.tacticalTags,s.settings.equipmentCategories,{da=it},s,aid.orEmpty()); if(other || existing?.detailsB!=null && existing.detailsB!=ParticipantDetails()) DetailsEditor(bname.ifBlank { "Fencer B" },db,s.settings.tacticalTags,s.settings.equipmentCategories,{db=it},s,bid.orEmpty())
@@ -294,7 +277,7 @@ private fun ratingLabel(weapon: String,evidence: RatingEvidence?,loading: Boolea
                 val history=strength?.ratingHistory?.get(weaponName to id).orEmpty()
                 if(history.isNotEmpty()) {
                     Hint("Rating history · ${history.first().day} to ${history.last().day}")
-                    if(history.size>1) RatingSparkline(history)
+                    RatingSparkline(history)
                 }
             }
             Hint("Estimates from all recorded results, separate for each weapon. Provisional until 5 eligible bouts. These ratings use the full history, independently of the filters below.")

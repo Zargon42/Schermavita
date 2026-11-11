@@ -21,13 +21,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.*
 
-data class ChartDot(val x: Double,val y: Double,val series: String,val detail: String,val basis: String = if(series.contains("Historical calendar") || series=="calendar") "calendar" else "tracking",val trendSeries: String = series,val colorKey: String = series.substringBefore(" · Tracking-day").substringBefore(" · Historical calendar"))
+data class ChartDot(val x: Double,val y: Double,val series: String,val detail: String,val basis: String = if(series.contains("Historical calendar") || series=="calendar") "calendar" else "tracking",val trendSeries: String = series,val colorKey: String = series.substringBefore(" · Tracking-day").substringBefore(" · Historical calendar"),val revisions: Set<String> = setOf(colorKey))
 
 @Composable fun ObservationChart(dots: List<ChartDot>,xAxis: String,yAxis: String,zero: Boolean=false,dateAxis: Boolean=false,yBounds: Pair<Double,Double>?=null,xBounds: Pair<Double,Double>?=null) {
-    var trend by remember {mutableStateOf("Off")}
+    if(dateAxis) {TimeSeriesChart(dots,yAxis,zero,yBounds);return}
     var regression by remember {mutableStateOf(false)}
     var selected by remember(dots) {mutableStateOf<Int?>(null)}
-    val colors=listOf(MaterialTheme.colorScheme.primary,MaterialTheme.colorScheme.tertiary,MaterialTheme.colorScheme.secondary)
     val groups=dots.groupBy {it.series}
     val lines=if(regression) groups.mapValues {regressionLine(it.value.map {p->p.x to p.y})} else emptyMap()
     val allY=dots.map {it.y}+lines.values.flatten().map {it.second}+if(zero) listOf(0.0) else emptyList()
@@ -38,9 +37,6 @@ data class ChartDot(val x: Double,val y: Double,val series: String,val detail: S
     fun position(x: Double,y: Double,w: Float,h: Float) = Offset(
         if(minX==maxX) w/2 else (12+(x-minX)/(maxX-minX)*(w-24)).toFloat(),
         (h-12-(y-lo)/(hi-lo)*(h-24)).toFloat())
-    if(dateAxis) {Text("Trend");Chips(listOf("Off","7","14","28"),trend,{trend=it})}
-    val smooth=if(dateAxis && trend!="Off") dots.groupBy {it.trendSeries to it.basis}.mapValues {rollingMean(it.value.map {p->p.x to p.y},trend.toInt())} else emptyMap()
-    smooth.forEach {(key,points)->points.lastOrNull()?.let {Hint("${key.first}: ${trend}-day mean ${decimal(it.value)} · ${it.count} observed days")}}
     FilterChip(regression,onClick={regression=!regression},label={Text("Regression line")})
     Text("Y: $yAxis · ${decimal(lo)} to ${decimal(hi)}",style=MaterialTheme.typography.labelMedium)
     if(dots.isEmpty()) Hint("No matching observations. Try a wider range or different filters.")
@@ -61,18 +57,22 @@ data class ChartDot(val x: Double,val y: Double,val series: String,val detail: S
             val y=position(minX,0.0,size.width,size.height).y
             drawLine(Color.Gray,Offset(12f,y),Offset(size.width-12,y),strokeWidth=2f)
         }
-        smooth.values.forEach {points->points.zipWithNext().filter {it.second.day-it.first.day<=trend.toInt()}.forEach {(a,b)->drawLine(colors[1],position(a.day,a.value,size.width,size.height),position(b.day,b.value,size.width,size.height),strokeWidth=4f)}}
         groups.keys.forEachIndexed {i,name ->
             val color=Color.hsv((groups.getValue(name).first().colorKey.hashCode().toLong().let {kotlin.math.abs(it)}%360).toFloat(),0.45f,0.9f)
-            val line=lines[name].orEmpty()
-            if(line.size==2) drawLine(color.copy(alpha=.7f),position(line.first().first,line.first().second,size.width,size.height),position(line.last().first,line.last().second,size.width,size.height),strokeWidth=2f)
-            dots.forEachIndexed {index,p->if(p.series==name) {
+            dots.forEach {p->if(p.series==name) {
                 val pos=position(p.x,p.y,size.width,size.height)
                 val radius=2.dp.toPx()
                 if(p.basis=="calendar") drawRect(color,pos-Offset(radius,radius),androidx.compose.ui.geometry.Size(radius*2,radius*2)) else drawCircle(color,radius,pos)
-                if(selected==index) drawCircle(color,4.dp.toPx(),pos,style=androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))
+
             }}
         }
+        groups.forEach {(name,rows)->
+            val color=Color.hsv((kotlin.math.abs(rows.first().colorKey.hashCode().toLong())%360).toFloat(),.45f,.9f)
+            val line=lines[name].orEmpty()
+            if(line.size==2) drawLine(color,position(line.first().first,line.first().second,size.width,size.height),position(line.last().first,line.last().second,size.width,size.height),strokeWidth=2.dp.toPx())
+        }
+        selected?.let {index->val p=dots[index];val color=Color.hsv((kotlin.math.abs(p.colorKey.hashCode().toLong())%360).toFloat(),.45f,.9f)
+            drawCircle(color,4.dp.toPx(),position(p.x,p.y,size.width,size.height),style=androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()))}
     }
     val xRange=if(dateAxis) "${LocalDate.ofEpochDay(minX.toLong())} — ${LocalDate.ofEpochDay(maxX.toLong())}" else "${decimal(minX)} to ${decimal(maxX)}"
     Text("X: $xAxis${if(dots.isEmpty()) "" else " · $xRange"}",style=MaterialTheme.typography.labelMedium)
@@ -204,7 +204,7 @@ fun screenTimeChartNote(s: Snapshot,now: Instant = Instant.now()): String? {
                 val points=remember(bouts,measure,strength) {performancePoints(bouts,s.me,measure,strength ?: StrengthAnalysis())}
                 if(strength==null && measure==PerformanceMeasure.ADJUSTED) LinearProgressIndicator(Modifier.fillMaxWidth())
                 if(points.isNotEmpty()) {
-                    Hint("Timeline: each dot is one recorded day. Color distinguishes date source; gaps mean no recorded result.")
+                    Hint("Timeline: daily lines or weekly/monthly averages. Gaps indicate missing results.")
                     ObservationChart(points.map {ChartDot(LocalDate.parse(it.day).toEpochDay().toDouble(),it.value,"${it.series} · ${observationSourceLabel(it.basis)}",
                         "${it.day} · ${it.series}: ${decimal(it.value)} ${it.unit} · ${it.count} bouts · ${observationSourceLabel(it.basis)}")},
                         "Recorded date",measure.unit,measure==PerformanceMeasure.ADJUSTED,dateAxis=true)
@@ -237,15 +237,11 @@ fun screenTimeChartNote(s: Snapshot,now: Instant = Instant.now()): String? {
                     val definition=xm.atScale(scale)
                     val scaleLabel=metricScaleLabel(xm,definition)
                     Panel("${xm.name} timeline · $scaleLabel") {
-                        Hint("Timeline: each dot is one observed day. Color distinguishes historical calendar dates from tracking-day dates.")
+                        Hint("Timeline: daily lines or weekly/monthly averages. Inspect a value for its measurement definitions and date source.")
                         ObservationChart(rows.map {ChartDot(LocalDate.parse(it.day).toEpochDay().toDouble(),it.value,"${revisionLabel(xm,it.revision)} · ${observationSourceLabel(it.basis)}",
-                            "${it.day}: ${decimal(it.value)} ${definition.unit} · ${it.count} observations · ${observationSourceLabel(it.basis)} · ${revisionLabel(xm,it.revision)}",basis=it.basis,trendSeries=it.basis,colorKey=it.revision)},
+                            "${it.day}: ${decimal(it.value)} ${definition.unit} · ${it.count} observations · ${observationSourceLabel(it.basis)} · ${revisionLabel(xm,it.revision)}",basis=it.basis,trendSeries=it.basis,colorKey=it.revision,revisions=it.revision.split(" + ").map {id->revisionLabel(xm,id)}.toSet())},
                             "Recorded date",definition.unit.ifBlank {scaleLabel},dateAxis=true,yBounds=if(definition.kind=="Rating") definition.min to definition.max else null)
-                        Hint("${rows.size} observed days · scale $scaleLabel")
-                        rows.groupBy {it.basis}.forEach { (basis,sourceRows)->
-                            Hint("${observationSourceLabel(basis)} · ${sourceRows.count {it.scope=="daily"}} daily reviews; ${sourceRows.count {it.scope=="momentary"}} days summarised from events")
-                            sourceRows.groupBy {LocalDate.parse(it.day).with(java.time.DayOfWeek.MONDAY).toString()}.toSortedMap(reverseOrder()).entries.take(8).forEach { (week,values)->Hint("${observationSourceLabel(basis)} · week of $week · ${values.size}/7 days · mean ${decimal(values.map {it.value}.average())} ${definition.unit}")}
-                        }
+
                     }
                 }
                 MetricPicker("Compare with",numeric,y,{y=it});Row {Checkbox(preceding,{preceding=it});Text("First factor on the preceding day")}

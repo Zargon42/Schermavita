@@ -46,12 +46,12 @@ class UnifiedFeaturesDeviceTest {
         compose.onNode(hasText("Mood",substring=false) and hasClickAction()).performClick()
         compose.onNodeWithText("4 observed days",substring=true).performScrollTo().assertIsDisplayed()
         compose.onNodeWithText("7",substring=false).performScrollTo().performClick()
-        compose.onNodeWithText("7-day mean",substring=true).assertExists()
+        compose.onAllNodesWithText("7-day mean",substring=true).onFirst().assertExists()
         compose.onNodeWithText("Mood timeline · Rating").performScrollTo()
         val bitmap=compose.onRoot().captureToImage().asAndroidBitmap()
         java.io.File(compose.activity.cacheDir,"combined-insights.png").outputStream().use {bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it)}
         compose.onNodeWithText("Separate",substring=false).performScrollTo().performClick()
-        assertEquals(2,compose.onAllNodesWithText("2 observed days · scale Rating",substring=false).fetchSemanticsNodes().size)
+        assertEquals(2,compose.onAllNodesWithText("2 observed days · 2 displayed values",substring=false).fetchSemanticsNodes().size)
     }
     @Test fun historicalMoodAppearsWithHappinessAndCanBeSeparated() {
         val current=Metric("mood","Mood (Happiness)")
@@ -63,7 +63,7 @@ class UnifiedFeaturesDeviceTest {
         compose.activity.runOnUiThread {compose.activity.setContent {MaterialTheme {InsightsScreen(Snapshot(metrics=listOf(current,historical),observations=observations))}}}
         compose.onNodeWithText("Life",substring=false).performClick()
         compose.onNodeWithText("Mood (Happiness) timeline · Rating").performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText("2 observed days · scale Rating").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("2 observed days · 2 displayed values").performScrollTo().assertIsDisplayed()
         compose.onAllNodesWithText("Mood · history",substring=true).onFirst().assertExists()
         compose.onNodeWithText("Separate",substring=false).performScrollTo().performClick()
         assertEquals(2,compose.onAllNodesWithText("1 observed days",substring=true).fetchSemanticsNodes().size)
@@ -73,8 +73,12 @@ class UnifiedFeaturesDeviceTest {
         runBlocking {repo.saveSession(session)}
         compose.onNodeWithText("Fencing",useUnmergedTree=true).performClick()
         compose.onNodeWithText("Add bout",substring=false).performScrollTo().performClick()
+        compose.onNodeWithText("Plan/process execution",substring=true).assertDoesNotExist()
+        compose.onNodeWithText("Rating, tactics & more").performScrollTo().performClick()
         compose.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsActions.SetProgress)).onFirst().performSemanticsAction(SemanticsActions.SetProgress) {it(4f)}
-        compose.onAllNodesWithText("Yes",substring=false).onFirst().performClick()
+        compose.onAllNodesWithText("Yes",substring=false).onFirst().performScrollTo().performClick()
+        compose.onNodeWithText("Hide extra details").performScrollTo().performClick()
+        compose.onNodeWithText("Plan/process execution",substring=true).assertDoesNotExist()
         compose.onNodeWithText("Opponent",substring=false).performScrollTo().performTextInput("Alice")
         compose.onNodeWithText("Your score").performScrollTo().performTextInput("5")
         compose.onNodeWithText("Opponent score").performScrollTo().performTextInput("3")
