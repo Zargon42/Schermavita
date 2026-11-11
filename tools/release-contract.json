@@ -1,5 +1,5 @@
 {
-  "minimumVersionCode": 11,
+  "minimumVersionCode": 12,
   "package": "dev.riposte.personal",
   "certificateSha256": "e0a36491d96e832000c6dacd06a715ac1bd6780ebfdd4dad5b059f456aec5bb5",
   "required": {
@@ -30,7 +30,8 @@
     "app/src/main/kotlin/dev/riposte/app/SettingsScreen.kt": [
       "Panel(\"Screen time\")",
       "ACTION_USAGE_ACCESS_SETTINGS",
-      "BuildConfig.VERSION_NAME"
+      "BuildConfig.VERSION_NAME",
+      "Manual score trackers added"
     ],
     "app/src/main/kotlin/dev/riposte/app/LifeScreens.kt": [
       "screen_time"
@@ -75,7 +76,8 @@
       "observationSourceLabel",
       "ScreenTimeChartHint",
       "chartableMetrics",
-      "screenTimeChartNote"
+      "screenTimeChartNote",
+      "TimeSeriesChart(dots,yAxis,zero,yBounds)"
     ],
     "app/src/main/kotlin/dev/riposte/app/ImportScreen.kt": [
       "Choose photo",
@@ -124,6 +126,18 @@
     "life/src/main/kotlin/dev/riposte/life/InsightData.kt": [
       "fun insightData",
       "legacy:unified_mood"
+    ],
+    "life/src/main/kotlin/dev/riposte/life/ChartPeriods.kt": [
+      "fun chartWindow",
+      "fun chartBins",
+      "fun connectChartBins"
+    ],
+    "app/src/main/kotlin/dev/riposte/app/TimeSeriesChart.kt": [
+      "fun TimeSeriesChart",
+      "Individual days",
+      "detectHorizontalDragGestures",
+      "Multiple compatible revisions",
+      "Jump to today"
     ]
   },
   "tests": [
@@ -707,6 +721,76 @@
       "file": "app/src/androidTest/kotlin/dev/riposte/app/UnifiedFeaturesDeviceTest.kt",
       "class": "dev.riposte.app.UnifiedFeaturesDeviceTest",
       "name": "historicalMoodAppearsWithHappinessAndCanBeSeparated"
+    },
+    {
+      "module": "life",
+      "kind": "test",
+      "file": "life/src/test/kotlin/dev/riposte/life/ChartPeriodsTest.kt",
+      "class": "dev.riposte.life.ChartPeriodsTest",
+      "name": "calendarWindowsIncludeLeapDaysAndMondayWeeks"
+    },
+    {
+      "module": "life",
+      "kind": "test",
+      "file": "life/src/test/kotlin/dev/riposte/life/ChartPeriodsTest.kt",
+      "class": "dev.riposte.life.ChartPeriodsTest",
+      "name": "trailingWindowsAreInclusiveAndPagingRespectsHistory"
+    },
+    {
+      "module": "life",
+      "kind": "test",
+      "file": "life/src/test/kotlin/dev/riposte/life/ChartPeriodsTest.kt",
+      "class": "dev.riposte.life.ChartPeriodsTest",
+      "name": "sparsePartialBucketsWeightDaysAndRetainDefinitions"
+    },
+    {
+      "module": "life",
+      "kind": "test",
+      "file": "life/src/test/kotlin/dev/riposte/life/ChartPeriodsTest.kt",
+      "class": "dev.riposte.life.ChartPeriodsTest",
+      "name": "sourcesAndIncompatibleSeriesNeverShareBuckets"
+    },
+    {
+      "module": "life",
+      "kind": "test",
+      "file": "life/src/test/kotlin/dev/riposte/life/ChartPeriodsTest.kt",
+      "class": "dev.riposte.life.ChartPeriodsTest",
+      "name": "linesBreakAfterTwoMissingDaysOrEmptyBuckets"
+    },
+    {
+      "module": "life",
+      "kind": "test",
+      "file": "life/src/test/kotlin/dev/riposte/life/ChartPeriodsTest.kt",
+      "class": "dev.riposte.life.ChartPeriodsTest",
+      "name": "bucketingFollowsDailyPrecedenceWithoutChangingAnalysisInputs"
+    },
+    {
+      "module": "app",
+      "kind": "androidTest",
+      "file": "app/src/androidTest/kotlin/dev/riposte/app/QuieterChartsDeviceTest.kt",
+      "class": "dev.riposte.app.QuieterChartsDeviceTest",
+      "name": "rangeNavigationAndIndividualDaysUseVisibleCounts"
+    },
+    {
+      "module": "app",
+      "kind": "androidTest",
+      "file": "app/src/androidTest/kotlin/dev/riposte/app/QuieterChartsDeviceTest.kt",
+      "class": "dev.riposte.app.QuieterChartsDeviceTest",
+      "name": "savedGoalAnswersSurviveEditingWithDetailsClosed"
+    },
+    {
+      "module": "app",
+      "kind": "androidTest",
+      "file": "app/src/androidTest/kotlin/dev/riposte/app/QuieterChartsDeviceTest.kt",
+      "class": "dev.riposte.app.QuieterChartsDeviceTest",
+      "name": "manualScoreConfirmationReflectsSavedTrackers"
+    },
+    {
+      "module": "app",
+      "kind": "androidTest",
+      "file": "app/src/androidTest/kotlin/dev/riposte/app/QuieterChartsDeviceTest.kt",
+      "class": "dev.riposte.app.QuieterChartsDeviceTest",
+      "name": "denseMixedRevisionChartsCaptureBothThemesWithOverlays"
     }
   ]
 }

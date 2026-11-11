@@ -110,4 +110,16 @@ Health Connect imports have individual switches. Existing steps and sleep access
 
 ## Device checks
 
+### Version 0.7.2: chart and logging changes
+
+Goal execution and Applied answers are inside **Rating, tactics & more**. Session goals remain visible before expanding it. The **5 / 10 / 15** target buttons sit directly below **Won to target / Lost to target**. Fencer list cards show current ratings; open a profile for its history chart.
+
+Time-series charts start in the month containing the latest matching observation. **Week** and **Month** use daily lines; **3M** uses calendar-quarter weekly averages; **Year** and **All time** use monthly averages. **Last 7 days**, **Last 30 days** and **Last 90 days** initially end today. Use arrows or swipe horizontally to move periods. The longer views offer **Individual days** to restore daily dots.
+
+Missing days are excluded from averages. Daily lines connect across one missing day and break across two or more; empty weekly/monthly buckets also break the line. Tap a value or use the inspection buttons for its source, definitions and contributing-day counts. Historical calendar dates remain separate from tracking-day dates. Optional regression and rolling means appear above the observations.
+
+**Jump to today** returns the selected range to today's period. In **All time**, it opens the current month. Trailing windows end today after jumping.
+
+After adding manual recovery trackers, Settings confirms they are saved and directs you to **Today > Quick entry**.
+
 See `VALIDATION.md` for completed automated checks and physical-phone checks. Emulator tests cannot establish Fitbit synchronisation, Xiaomi background scheduling, real handwriting recognition, or your personal entry speed.

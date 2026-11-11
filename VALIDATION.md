@@ -1,5 +1,13 @@
 # Source export validation
 
+## Version 0.7.2 (code 12), 10 November 2026
+
+Source changes add navigable calendar/trailing chart windows, daily lines and weekly/monthly averages, daily-dot overrides, foreground trend overlays, profile-only rating history and collapsed goal-execution controls. The manual-score confirmation is included. Six unit tests and four device tests were added; existing chart and bout tests were adapted without removing test identities. The source contract now requires 93 tests.
+
+All 71 unit tests and all 22 emulator tests passed, with no skips and the private-history fixture supplied. The guarded build completed debug, instrumentation and signed release APKs; lint reported no errors. The code-11 to code-12 in-place emulator upgrade preserved all 38 database/private-file hashes before first launch. Synthetic light- and dark-theme chart captures were reviewed. The final full emulator run passed after correcting a duplicate-label test selector and restarting the emulator following a transient screenshot-capture timeout.
+
+This release also moves the 5/10/15 target buttons below Won/Lost to target and adds Jump to today to date charts. Existing application ID, signing certificate, screen-time sync, backup and import test requirements are retained.
+
 ## Version 0.7.1 (code 11), 10 November 2026
 
 All 65 unit tests and all 18 emulator tests passed with the private-history fixture supplied. Debug, instrumentation and signed release builds passed through `tools/build.ps1`; Android lint reported no errors. The release contract requires all 83 test identities, preserving the previous requirements.
