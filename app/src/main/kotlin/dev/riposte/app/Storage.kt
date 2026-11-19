@@ -22,7 +22,8 @@ import java.util.zip.*
     val metrics: List<Metric> = defaultMetrics(), val observations: List<Observation> = emptyList(), val reviews: List<DailyReview> = emptyList(),
     val batches: List<ImportBatch> = emptyList(), val attachments: List<SourceAttachment> = emptyList(), val settings: Settings = Settings(),
     val equipmentProfiles: List<EquipmentProfile> = emptyList(), val reflectionQuestions: List<ReflectionQuestion> = emptyList(),
-    val lessons: List<Lesson> = emptyList()
+    val lessons: List<Lesson> = emptyList(),
+    val habits: List<Habit> = emptyList(), val habitEntries: List<HabitEntry> = emptyList()
 ) {
     val me get() = fencers.single { it.isMe }.id
     fun name(id: String) = fencers.find { it.id==id }?.name ?: "Unknown fencer"
@@ -30,6 +31,18 @@ import java.util.zip.*
         require(version==2) { "Unsupported backup version." }
         require(fencers.count { it.isMe }==1) { "Exactly one personal profile is required." }
         fun unique(ids: List<String>) { require(ids.size==ids.toSet().size) { "Duplicate record identifiers." } }
+        unique(habits.map { it.id }); unique(habitEntries.map { it.id })
+        habits.forEach { it.validate() }
+        val byHabit = habits.associateBy { it.id }
+        val binaryDays = mutableSetOf<Pair<String,String>>()
+        habitEntries.forEach { entry ->
+            val habit = requireNotNull(byHabit[entry.habitId])
+            val date = LocalDate.parse(entry.day)
+            require(date >= habit.start && entry.id.isNotBlank() && entry.amount.isFinite() && entry.amount > 0)
+            val goal = habit.goalOn(date)
+            if (goal.type == HabitType.CheckIns) require(entry.amount == 1.0)
+            if (goal.binary) require(binaryDays.add(habit.id to entry.day)) { "Already checked in on this day." }
+        }
         unique(equipmentProfiles.map {it.id}); unique(reflectionQuestions.map {it.id});
         unique(fencers.map { it.id }); unique(sessions.map { it.id }); unique(bouts.map { it.id }); unique(lessons.map { it.id }); unique(metrics.map { it.id }); unique(observations.map { it.id }); unique(attachments.map { it.id })
         val people=fencers.map { it.id }.toSet(); val groups=sessions.map { it.id }.toSet(); val definitions=metrics.map { it.id }.toSet()
@@ -83,6 +96,8 @@ class AppRepository(val context: Context): FencingRepository {
         val previous=old.associateBy(key);return items.filter {previous[key(it)]!=it}
     }
     private fun records(s: Snapshot,old: Snapshot?=null): List<Record> = buildList {
+        addAll(changed(s.habits,old?.habits) {it.id}.map {record("habit",it.id,it)})
+        addAll(changed(s.habitEntries,old?.habitEntries) {it.id}.map {record("habitEntry",it.id,it,it.day)})
         addAll(changed(s.equipmentProfiles,old?.equipmentProfiles) {it.id}.map {record("equipment",it.id,it)})
         if(s.reflectionQuestions!=old?.reflectionQuestions) add(record("questions","main",s.reflectionQuestions))
         if(s.settings!=old?.settings) add(record("settings","main",s.settings))
@@ -92,12 +107,12 @@ class AppRepository(val context: Context): FencingRepository {
         addAll(changed(s.metrics,old?.metrics) {it.id}.map { record("metric",it.id,it) }); addAll(changed(s.observations,old?.observations) {it.id}.map { record("observation",it.id,it,it.stamp.day,it.origin.batchId) })
         addAll(changed(s.reviews,old?.reviews) {it.id}.map { record("review",it.id,it,it.day) }); addAll(changed(s.batches,old?.batches) {it.id}.map { record("batch",it.id,it) }); addAll(changed(s.attachments,old?.attachments) {it.id}.map { record("attachment",it.id,it,batch=it.batchId) })
     }
-    private fun keys(s: Snapshot): Set<String> = (listOf("settings/main","questions/main")+s.equipmentProfiles.map {"equipment/${it.id}"}+s.fencers.map {"fencer/${it.id}"}+s.sessions.map {"session/${it.id}"}+s.lessons.map {"lesson/${it.id}"}+s.bouts.map {"bout/${it.id}"}+s.days.map {"day/${it.id}"}+s.metrics.map {"metric/${it.id}"}+s.observations.map {"observation/${it.id}"}+s.reviews.map {"review/${it.id}"}+s.batches.map {"batch/${it.id}"}+s.attachments.map {"attachment/${it.id}"}).toSet()
+    private fun keys(s: Snapshot): Set<String> = (listOf("settings/main","questions/main")+s.habits.map {"habit/${it.id}"}+s.habitEntries.map {"habitEntry/${it.id}"}+s.equipmentProfiles.map {"equipment/${it.id}"}+s.fencers.map {"fencer/${it.id}"}+s.sessions.map {"session/${it.id}"}+s.lessons.map {"lesson/${it.id}"}+s.bouts.map {"bout/${it.id}"}+s.days.map {"day/${it.id}"}+s.metrics.map {"metric/${it.id}"}+s.observations.map {"observation/${it.id}"}+s.reviews.map {"review/${it.id}"}+s.batches.map {"batch/${it.id}"}+s.attachments.map {"attachment/${it.id}"}).toSet()
     suspend fun load() = withContext(Dispatchers.IO) { lock.withLock {
         val all=db.records().all()
         if(all.isNotEmpty()) {
             fun kind(k: String)=all.filter { it.kind==k }.map { it.payload }
-            mutable.value=Snapshot(equipmentProfiles=kind("equipment").map {codec.decodeFromString(it)},reflectionQuestions=kind("questions").firstOrNull()?.let {codec.decodeFromString(it)} ?: emptyList(),fencers=kind("fencer").map { codec.decodeFromString(it) },sessions=kind("session").map { codec.decodeFromString(it) },
+            mutable.value=Snapshot(habits=kind("habit").map {codec.decodeFromString(it)},habitEntries=kind("habitEntry").map {codec.decodeFromString(it)},equipmentProfiles=kind("equipment").map {codec.decodeFromString(it)},reflectionQuestions=kind("questions").firstOrNull()?.let {codec.decodeFromString(it)} ?: emptyList(),fencers=kind("fencer").map { codec.decodeFromString(it) },sessions=kind("session").map { codec.decodeFromString(it) },
                 bouts=kind("bout").map { codec.decodeFromString(it) },lessons=kind("lesson").map { codec.decodeFromString(it) },days=kind("day").map { codec.decodeFromString(it) },metrics=kind("metric").map { codec.decodeFromString(it) },
                 observations=kind("observation").map { codec.decodeFromString(it) },reviews=kind("review").map { codec.decodeFromString(it) },batches=kind("batch").map { codec.decodeFromString(it) },attachments=kind("attachment").map { codec.decodeFromString(it) },settings=kind("settings").firstOrNull()?.let { codec.decodeFromString(it) } ?: Settings())
         } else db.records().put(records(mutable.value))

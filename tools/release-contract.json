@@ -1,5 +1,5 @@
 {
-  "minimumVersionCode": 12,
+  "minimumVersionCode": 13,
   "package": "dev.riposte.personal",
   "certificateSha256": "e0a36491d96e832000c6dacd06a715ac1bd6780ebfdd4dad5b059f456aec5bb5",
   "required": {
@@ -25,7 +25,8 @@
     ],
     "app/src/main/kotlin/dev/riposte/app/MainActivity.kt": [
       "syncScreenTime(repo)",
-      "val appName=stringResource(R.string.app_name)"
+      "val appName=stringResource(R.string.app_name)",
+      "HabitsScreen(repo"
     ],
     "app/src/main/kotlin/dev/riposte/app/SettingsScreen.kt": [
       "Panel(\"Screen time\")",
@@ -62,7 +63,11 @@
     "app/src/main/kotlin/dev/riposte/app/Storage.kt": [
       "val lessons: List<Lesson>",
       "record(\"lesson\"",
-      "suspend fun closeSession"
+      "suspend fun closeSession",
+      "record(\"habit\"",
+      "record(\"habitEntry\"",
+      "habits=kind(\"habit\")",
+      "habitEntries=kind(\"habitEntry\")"
     ],
     "app/src/main/kotlin/dev/riposte/app/BackupScreen.kt": [
       "fun lessonsCsv",
@@ -138,6 +143,15 @@
       "detectHorizontalDragGestures",
       "Multiple compatible revisions",
       "Jump to today"
+    ],
+    "app/src/main/kotlin/dev/riposte/app/Habit.kt": [
+      "fun Habit.stats",
+      "data class HabitRevision"
+    ],
+    "app/src/main/kotlin/dev/riposte/app/HabitsScreen.kt": [
+      "fun HabitsScreen",
+      "HabitEditor",
+      "HabitLog"
     ]
   },
   "tests": [
@@ -791,6 +805,48 @@
       "file": "app/src/androidTest/kotlin/dev/riposte/app/QuieterChartsDeviceTest.kt",
       "class": "dev.riposte.app.QuieterChartsDeviceTest",
       "name": "denseMixedRevisionChartsCaptureBothThemesWithOverlays"
+    },
+    {
+      "module": "app",
+      "kind": "test",
+      "file": "app/src/test/kotlin/dev/riposte/app/HabitTest.kt",
+      "class": "dev.riposte.app.HabitTest",
+      "name": "dailyCountsAndCoverageRecoverAfterCorrection"
+    },
+    {
+      "module": "app",
+      "kind": "test",
+      "file": "app/src/test/kotlin/dev/riposte/app/HabitTest.kt",
+      "class": "dev.riposte.app.HabitTest",
+      "name": "countdownAndFixedBlocksDivergeOnEarlyAndLateLogs"
+    },
+    {
+      "module": "app",
+      "kind": "test",
+      "file": "app/src/test/kotlin/dev/riposte/app/HabitTest.kt",
+      "class": "dev.riposte.app.HabitTest",
+      "name": "calendarBoundariesAndShortOpeningPeriods"
+    },
+    {
+      "module": "app",
+      "kind": "test",
+      "file": "app/src/test/kotlin/dev/riposte/app/HabitTest.kt",
+      "class": "dev.riposte.app.HabitTest",
+      "name": "quantitiesSessionsAndRevisionsKeepHistoricalMeaning"
+    },
+    {
+      "module": "app",
+      "kind": "test",
+      "file": "app/src/test/kotlin/dev/riposte/app/HabitTest.kt",
+      "class": "dev.riposte.app.HabitTest",
+      "name": "archiveRoundTripAndOldSnapshots"
+    },
+    {
+      "module": "app",
+      "kind": "androidTest",
+      "file": "app/src/androidTest/kotlin/dev/riposte/app/HabitDeviceTest.kt",
+      "class": "dev.riposte.app.HabitDeviceTest",
+      "name": "createLogUndoCorrectAndReloadFromHabitsTab"
     }
   ]
 }

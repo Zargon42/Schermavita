@@ -77,8 +77,8 @@ class MainActivity: ComponentActivity() {
         navigationIcon={ if(page.isNotEmpty()) IconButton(onClick={ page="" }) { Icon(Glyph.ArrowBack,"Back") } },
         actions={ if(page.isEmpty()) { IconButton(onClick={ page="Imports" }) { Icon(Glyph.FileDownload,"Import data") }; IconButton(onClick={ page="Settings" }) { Icon(Glyph.Settings,"Settings") } } }) },
         snackbarHost={ SnackbarHost(snackbar) },bottomBar={ if(page.isEmpty()) NavigationBar {
-            val icons=listOf(Glyph.WbSunny,Glyph.Sports,Glyph.History,Glyph.Insights)
-            listOf("Today","Fencing","History","Insights").forEachIndexed { i,label -> NavigationBarItem(selected=tab==i,onClick={ run { repo.selectTab(i) } },icon={ Icon(icons[i],label) },label={ Text(label) }) }
+            val icons=listOf(Glyph.WbSunny,Glyph.Sports,Glyph.History,Glyph.Insights,Glyph.Habits)
+            listOf("Today","Fencing","History","Insights","Habits").forEachIndexed { i,label -> NavigationBarItem(selected=tab==i,onClick={ run { repo.selectTab(i) } },icon={ Icon(icons[i],label) },label={ Text(label) }) }
         } }) { padding -> Box(Modifier.padding(padding).fillMaxSize()) {
         when(page) {
             "Settings" -> SettingsScreen(repo,s,run) { if(it=="My profile") {person=s.me;page="Fencer"} else page=it }
@@ -92,6 +92,7 @@ class MainActivity: ComponentActivity() {
                 1 -> FencingScreen(repo,s,run,onSession={ editSession=it; sessionForm=true },onBout={ editBout=it; boutForm=true },onAdd={ addBout() },onPerson={ person=it; page="Fencer" })
                 2 -> HistoryScreen(s,onEvent={ metric=s.metrics.find { m->m.id==it.metric }; event=it },onBout={ editBout=it; boutForm=true })
                 3 -> InsightsScreen(s)
+                4 -> if (currentDay.isNotBlank()) HabitsScreen(repo,s,LocalDate.parse(currentDay),run)
             }
         }
     } }
