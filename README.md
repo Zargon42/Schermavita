@@ -1,5 +1,7 @@
 # SchermaVita
 
+[Italiano](README.it.md)
+
 **An Android app for recording fencing practice and exploring performance alongside daily context.**
 
 SchermaVita brings session preparation, equipment, lessons, bout results, daily logs and local charts into one app. It works without an account or server: records stay on the device, document OCR runs on-device, and backups are exported manually with password-based encryption. The app does not request internet permission.
